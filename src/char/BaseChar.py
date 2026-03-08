@@ -480,6 +480,7 @@ class BaseChar:
         self._liberation_available = False
         self._echo_available = False
         self._resonance_available = False
+        self.has_echo = True
 
     def click_liberation(self, con_less_than=-1, send_click=False, wait_if_cd_ready=0.1):
         """尝试点击并释放共鸣解放。
@@ -672,6 +673,8 @@ class BaseChar:
         Returns:
             bool: 如果可用则返回 True。
         """
+        if getattr(self, 'has_echo', True) is False:
+            return False
         return self.available('echo', check_color=False)
 
     def extra_action_available(self):

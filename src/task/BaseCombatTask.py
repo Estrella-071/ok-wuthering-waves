@@ -378,6 +378,7 @@ class BaseCombatTask(CombatCheck):
                 self.in_liberation = False
                 current_char.switch_out()
                 switch_to.is_current_char = True
+                self.update_current_char_echo_status(switch_to)
                 if has_intro:
                     current_time = time.time()
                     self.add_freeze_duration(current_time, switch_to.intro_motion_freeze_duration, -100)
@@ -496,10 +497,16 @@ class BaseCombatTask(CombatCheck):
         if not self.hot_key_verified or force:
             self.hot_key_verified = True
             scale = 1.2
-            # self.set_key('Resonance Key', self.get_box_by_name('e').scale(scale))
-            self.set_key('Echo Key', self.get_box_by_name('r').scale(scale))
-            self.set_key('Liberation Key', self.get_box_by_name('q').scale(scale))
-            # self.set_key('Tool Key', self.get_box_by_name('t').scale(scale))
+            
+            box_echo_slot = self.get_box_by_name('r').scale(scale)
+            best_echo = self.find_best_match_in_box(box_echo_slot, ['t', 'e', 'r', 'q'], threshold=0.7)
+            if best_echo and best_echo.name in ['e', 't']:
+                self.log_info(f"UI Shift detected (Echo missing). Skipping hotkey learning to avoid corruption.")
+            else:
+                # self.set_key('Resonance Key', self.get_box_by_name('e').scale(scale))
+                self.set_key('Echo Key', box_echo_slot)
+                self.set_key('Liberation Key', self.get_box_by_name('q').scale(scale))
+                # self.set_key('Tool Key', self.get_box_by_name('t').scale(scale))
 
             self.info_set('Liberation Key', self.get_liberation_key())
             # self.info_set('Resonance Key', self.get_resonance_key())
@@ -541,6 +548,7 @@ class BaseCombatTask(CombatCheck):
                     healer_count += 1
                 if char.index == current_index:
                     char.is_current_char = True
+                    self.update_current_char_echo_status(char)
                 else:
                     char.is_current_char = False
         self.combat_start = time.time()
@@ -549,6 +557,18 @@ class BaseCombatTask(CombatCheck):
             for c in self.chars:
                 self.log_info(f'loaded chars success {c} {c.confidence}')
             return True
+
+    def update_current_char_echo_status(self, char):
+        """动态检测当前激活角色是否装备了声骸 (基于UI平移规则)"""
+        box = self.get_box_by_name('r').scale(1.2)
+        best = self.find_best_match_in_box(box, ['t', 'e', 'r', 'q'], threshold=0.7)
+        if best:
+            if best.name in ['e', 't']:
+                if getattr(char, 'has_echo', True):
+                    self.log_info(f"{char.name} has NO echo equipped (detected '{best.name}' in echo slot).")
+                    char.has_echo = False
+            else:
+                char.has_echo = True
 
     @staticmethod
     def should_update(the_char, old_char):
