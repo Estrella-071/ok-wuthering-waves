@@ -1,4 +1,5 @@
 import math
+import time
 
 from qfluentwidgets import FluentIcon
 
@@ -116,8 +117,11 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
                 
             if hasattr(self, 'formatter') and self.formatter:
                 self.formatter.update_text(combat_detail_id, '戰鬥中')
+            
+            start_time = time.time()
             self.combat_once()
             self.sleep(3)
+            combat_time = int(time.time() - start_time)
             
             if hasattr(self, 'formatter') and self.formatter:
                 self.formatter.update_text(combat_detail_id, '前往領取獎勵')
@@ -129,6 +133,8 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             self.click(0.51, 0.84, after_sleep=3)
             
             if hasattr(self, 'formatter') and self.formatter:
+                round_str_done = f"戰鬥 {round_count}/{total_rounds} (耗時 {combat_time} 秒)" if daily else f"戰鬥 {round_count} (耗時 {combat_time} 秒)"
+                self.formatter.update_text(combat_node_id, round_str_done)
                 self.formatter.set_status(combat_detail_id, RunStatus.DONE)
                 self.formatter.set_status(combat_node_id, RunStatus.DONE)
                 

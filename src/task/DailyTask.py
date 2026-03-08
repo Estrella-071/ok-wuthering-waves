@@ -105,7 +105,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.formatter.set_status('tower', RunStatus.DONE)
 
         self.formatter.set_status('check_info', RunStatus.RUNNING)
-        used_stamina, completed = self.open_daily()
+        used_stamina, completed = self.open_daily(update_ui=True)
         self.formatter.set_status('check_info', RunStatus.DONE)
 
         self.send_key('esc', after_sleep=1)
@@ -137,6 +137,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             # --- 6. 領取每日活躍 ---
             self.formatter.set_status('claim_active', RunStatus.RUNNING)
             self.claim_daily()
+            self.formatter.update_text('claim_active', '領取每日活躍獎勵 (已領取)')
             self.formatter.set_status('claim_active', RunStatus.DONE)
         else:
             self.formatter.set_status('farm', RunStatus.DONE)
@@ -145,12 +146,14 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         # --- 7. 領取郵件 ---
         self.formatter.set_status('claim_mail', RunStatus.RUNNING)
         self.claim_mail()
+        self.formatter.update_text('claim_mail', '領取郵件 (已清空)')
         self.formatter.set_status('claim_mail', RunStatus.DONE)
 
         # --- 8. 領取先約電台 ---
         self.sleep(1)
         self.formatter.set_status('claim_bp', RunStatus.RUNNING)
         self.claim_battle_pass()
+        self.formatter.update_text('claim_bp', '領取先約電台 (已完成)')
         self.formatter.set_status('claim_bp', RunStatus.DONE)
 
         self.log_info('Task completed', notify=True)
@@ -190,7 +193,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
                           raise_if_not_found=False)
         self.ensure_main()
 
-    def open_daily(self):
+    def open_daily(self, update_ui=False):
         self.log_info('open_daily')
         gray_book_quest = self.openF2Book("gray_book_quest")
         self.click_box(gray_book_quest, after_sleep=1.5)
@@ -203,10 +206,21 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         else:
             current = 0
         self.info_set('current daily progress', current)
-        if hasattr(self, 'formatter') and self.formatter:
-            self.formatter.update_text('check_active', f"活躍度 {current} / 100")
+
+        total_points = self.get_total_daily_points()
+        
+        if update_ui and hasattr(self, 'formatter') and self.formatter:
+            active_str = f"活躍度 {total_points}/100"
+            if total_points >= 100:
+                active_str += " (已達標)"
+            self.formatter.update_text('check_active', active_str)
             self.formatter.set_status('check_active', RunStatus.DONE)
-        return current, self.get_total_daily_points() >= 100
+
+            stamina_str = f"結晶玻片 {180 - current}/240+ (今日消耗 {current})"
+            self.formatter.update_text('check_stamina', stamina_str)
+            self.formatter.set_status('check_stamina', RunStatus.DONE)
+            
+        return current, total_points >= 100
 
     def get_total_daily_points(self):
         points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re)
@@ -220,7 +234,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
     def claim_daily(self):
         self.info_set('current task', 'claim daily')
         self.ensure_main(time_out=5)
-        self.open_daily()
+        self.open_daily(update_ui=False)
 
         self.click(0.87, 0.17, after_sleep=0.5)
         self.sleep(1)

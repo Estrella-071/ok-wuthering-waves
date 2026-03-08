@@ -24,6 +24,7 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
         self.queues = []
         self._capture_success = False
         self._capture_mode = False
+        self._nest_kill_count = 0
         self.default_config.update({'Which to Farm': ['Nightmare Purification', 'Tacet Discord Nest']})
         self.config_type['Which to Farm'] = {'type': "multi_selection",
                                              'options': ['Nightmare Purification', 'Tacet Discord Nest']}
@@ -31,6 +32,7 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
     def run(self):
         self._capture_mode = False
         self._capture_success = False
+        self._nest_kill_count = 0
         WWOneTimeTask.run(self)
         self.ensure_main(time_out=30)
         self._init_queue()
@@ -42,6 +44,7 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
     def run_capture_mode(self):
         self._capture_mode = True
         self._capture_success = False
+        self._nest_kill_count = 0
         WWOneTimeTask.run(self)
         self.ensure_main(time_out=30)
         self._init_queue()
@@ -80,6 +83,7 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
         if self._capture_mode:
             if self._capture_success or self.wait_until(self.has_echo_notification, time_out=3):
                 self.log_info("Captured echo during combat, skipping search.")
+                self._update_kill_count()
                 return
         else:
             self.sleep(3)
@@ -90,7 +94,13 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
             dropped = True
             self.log_info(f'farm echo walk find true')
         self._capture_success = dropped
+        self._update_kill_count()
         self.sleep(1)
+
+    def _update_kill_count(self):
+        self._nest_kill_count += 1
+        if hasattr(self, 'formatter') and self.formatter:
+            self.formatter.update_text('nightmare', f'噩夢巢穴 (已擊殺 {self._nest_kill_count} 隻)')
 
     def get_nest_to_go(self):
         gray_book_boss = self.openF2Book("gray_book_boss")
