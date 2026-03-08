@@ -1,3 +1,5 @@
+import math
+
 from qfluentwidgets import FluentIcon
 
 from ok import Logger
@@ -87,13 +89,14 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             if hasattr(self, 'formatter') and self.formatter and round_count == 1:
                 self.formatter.set_status('tp', RunStatus.DONE)
                 
+            combat_detail_id = f'combat_detail_{round_count}'
             combat_node_id = f'combat_{round_count}'
             if hasattr(self, 'formatter') and self.formatter:
                 round_str = f"戰鬥 {round_count}/{total_rounds}" if daily else f"戰鬥 {round_count}"
-                self.formatter.add_node(combat_node_id, f"狀態: {round_str}", parent_id='farm')
+                self.formatter.add_node(combat_node_id, round_str, parent_id='farm')
                 self.formatter.set_status(combat_node_id, RunStatus.RUNNING)
-                self.formatter.add_node('combat_detail', '正在跑圖', parent_id=combat_node_id)
-                self.formatter.set_status('combat_detail', RunStatus.RUNNING)
+                self.formatter.add_node(combat_detail_id, '正在跑圖', parent_id=combat_node_id)
+                self.formatter.set_status(combat_detail_id, RunStatus.RUNNING)
 
             if self.door_walk_method.get(index) is not None:
                 for method in self.door_walk_method.get(index):
@@ -102,7 +105,7 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
                     self.send_key_up(method[0])
                     self.sleep(0.05)
                 if hasattr(self, 'formatter') and self.formatter:
-                    self.formatter.update_text('combat_detail', '正在向目標移動')
+                    self.formatter.update_text(combat_detail_id, '正在向目標移動')
                 in_combat = self.run_until(self.in_combat, 'w', time_out=10, running=True,
                                            target=False, post_walk=1)
                 if not in_combat:
@@ -112,12 +115,12 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
                 self.pick_f(handle_claim=False)
                 
             if hasattr(self, 'formatter') and self.formatter:
-                self.formatter.update_text('combat_detail', '戰鬥中')
+                self.formatter.update_text(combat_detail_id, '戰鬥中')
             self.combat_once()
             self.sleep(3)
             
             if hasattr(self, 'formatter') and self.formatter:
-                self.formatter.update_text('combat_detail', '前往領取獎勵')
+                self.formatter.update_text(combat_detail_id, '前往領取獎勵')
             self.walk_to_treasure()
             self.pick_f(handle_claim=False)
             can_continue, used = self.use_stamina(once=self.stamina_once, must_use=must_use)
@@ -126,7 +129,7 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             self.click(0.51, 0.84, after_sleep=3)
             
             if hasattr(self, 'formatter') and self.formatter:
-                self.formatter.set_status('combat_detail', RunStatus.DONE)
+                self.formatter.set_status(combat_detail_id, RunStatus.DONE)
                 self.formatter.set_status(combat_node_id, RunStatus.DONE)
                 
             if not can_continue:

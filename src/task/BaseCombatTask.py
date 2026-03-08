@@ -245,7 +245,10 @@ class BaseCombatTask(CombatCheck):
         """
         self.wait_until(self.in_combat, time_out=wait_combat_time, raise_if_not_found=raise_if_not_found)
         if hasattr(self, 'formatter') and self.formatter:
-            self.formatter.update_text('combat_detail', '戰鬥中')
+            if hasattr(self.formatter, 'update_current_node_text'):
+                self.formatter.update_current_node_text('戰鬥中')
+            else:
+                self.formatter.update_text('combat_detail', '戰鬥中')
             
         self.load_chars()
         self.info_incr('Combat Count')
@@ -270,7 +273,10 @@ class BaseCombatTask(CombatCheck):
             bool: 如果成功拾取到声骸则返回 True, 否则 False。
         """
         if hasattr(self, 'formatter') and self.formatter:
-            self.formatter.update_text('combat_detail', '正在尋找/拾取聲骸')
+            if hasattr(self.formatter, 'update_current_node_text'):
+                self.formatter.update_current_node_text('正在尋找/拾取聲骸')
+            else:
+                self.formatter.update_text('combat_detail', '正在尋找/拾取聲骸')
             
         directions = ['w', 'a', 's', 'd']
         step = 0.8
@@ -299,7 +305,10 @@ class BaseCombatTask(CombatCheck):
             target_low_con (bool, optional): 是否优先切换到协奏值较低的角色。默认为 False。
         """
         if hasattr(self, 'formatter') and self.formatter:
-            self.formatter.update_text('combat_detail', '戰鬥中 (切換角色/施放技能)')
+            if hasattr(self.formatter, 'update_current_node_text'):
+                self.formatter.update_current_node_text('戰鬥中 (切換角色/施放技能)')
+            else:
+                self.formatter.update_text('combat_detail', '戰鬥中 (切換角色/施放技能)')
             
         max_priority = Priority.MIN
         switch_to = current_char

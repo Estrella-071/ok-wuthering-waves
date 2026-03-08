@@ -55,60 +55,71 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
 
     def run(self):
         self.formatter = ProgressFormatter('每日一條龍')
-        # 綁定回呼：每當樹狀結構變動時立即刷新 UI 字典
         self.formatter.set_on_change(self._refresh_info_display)
 
-        # 預先註冊所有節點 (PENDING 狀態不渲染，只有 set_status 後才會出現)
-        self.formatter.add_node('login', '登入')
+        # 預先註冊所有節點 (PENDING 不渲染，只有 set_status 後才漸進出現)
+        self.formatter.add_node('login', '登入遊戲')
         self.formatter.add_node('monthly', '領取月卡')
-        self.formatter.add_node('tower', '傳送至深塔')
-        self.formatter.add_node('info', '確認資訊')
-        self.formatter.add_node('info_active', '活躍度', 'info')
-        self.formatter.add_node('info_stamina', '結晶玻片', 'info')
-        self.formatter.add_node('farm', f"刷{self.config.get('Which to Farm', self.support_tasks[0])}")
-        self.formatter.add_node('stamina_done', '結晶消耗完成')
-        self.formatter.add_node('claim_active', '開始領取活躍度')
+        self.formatter.add_node('check_info', '確認資訊')
+        self.formatter.add_node('check_active', '活躍度', 'check_info')
+        self.formatter.add_node('check_stamina', '結晶玻片', 'check_info')
+
+        target_name = self.config.get('Which to Farm', self.support_tasks[0])
+        self.formatter.add_node('farm', f'刷 {target_name}')
+        self.formatter.add_node('claim_active', '領取每日活躍獎勵')
+        self.formatter.add_node('claim_mail', '領取郵件')
         self.formatter.add_node('claim_bp', '領取先約電台')
 
+        # --- 1. 登入 ---
         WWOneTimeTask.run(self)
         self.formatter.set_status('login', RunStatus.RUNNING)
         self.ensure_main(time_out=180)
         self.formatter.set_status('login', RunStatus.DONE)
 
-        self.formatter.set_status('tower', RunStatus.RUNNING)
-        self.go_to_tower()
-        self.formatter.set_status('tower', RunStatus.DONE)
+        # --- 2. 月卡 (由 check_for_monthly_card 內部處理，這裡標記已嘗試) ---
+        self.formatter.set_status('monthly', RunStatus.DONE)
 
+        # --- 3. 噩夢巢穴 (可選) ---
         condition1 = self.config.get('Auto Farm all Nightmare Nest')
         condition2 = self.config.get('Farm Nightmare Nest for Daily Echo')
         if condition1 or condition2:
+            self.formatter.add_node('nightmare', '噩夢巢穴')
+            self.formatter.set_status('nightmare', RunStatus.RUNNING)
             try:
                 if condition1:
-                    self.log_debug('Auto Farm all Nightmare Nest')
                     self.run_task_by_class(NightmareNestTask)
-                elif condition2 and self.config.get('Which to Farm', self.support_tasks[0]) != self.support_tasks[0]:
-                    self.log_debug('Farm Nightmare Nest for Daily Echo')
+                elif condition2 and target_name != self.support_tasks[0]:
                     self.get_task_by_class(NightmareNestTask).run_capture_mode()
+                self.formatter.set_status('nightmare', RunStatus.DONE)
             except TaskDisabledException:
                 raise
             except Exception as e:
                 self.log_error("NightmareNestTask Failed", e)
+                self.formatter.set_status('nightmare', RunStatus.FAILED)
                 self.ensure_main(time_out=180)
-        self.formatter.set_status('info', RunStatus.RUNNING)
+
+        # --- 4. 傳送至深塔 & 確認資訊 ---
+        self.formatter.add_node('tower', '傳送至深塔')
+        self.formatter.set_status('tower', RunStatus.RUNNING)
+        self.go_to_tower()
+        self.formatter.set_status('tower', RunStatus.DONE)
+
+        self.formatter.set_status('check_info', RunStatus.RUNNING)
         used_stamina, completed = self.open_daily()
-        self.formatter.set_status('info', RunStatus.DONE)
+        self.formatter.set_status('check_info', RunStatus.DONE)
 
         self.send_key('esc', after_sleep=1)
-        self.formatter.set_status('farm', RunStatus.RUNNING)
+
+        # --- 5. 刷副本 ---
         if not completed:
+            self.formatter.set_status('farm', RunStatus.RUNNING)
             if used_stamina < 180:
-                target = self.config.get('Which to Farm', self.support_tasks[0])
-                if target == self.support_tasks[0]:
+                if target_name == self.support_tasks[0]:
                     task = self.get_task_by_class(TacetTask)
                     task.formatter = self.formatter
                     task.formatter.set_on_change(task._refresh_info_display)
                     task.farm_tacet(daily=True, used_stamina=used_stamina, config=self.config)
-                elif target == self.support_tasks[1]:
+                elif target_name == self.support_tasks[1]:
                     task = self.get_task_by_class(ForgeryTask)
                     task.formatter = self.formatter
                     task.formatter.set_on_change(task._refresh_info_display)
@@ -119,18 +130,29 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
                     task.formatter.set_on_change(task._refresh_info_display)
                     task.farm_simulation(daily=True, used_stamina=used_stamina, config=self.config)
                 self.sleep(4)
+            # 回到 DailyTask 自身控制
+            self.formatter.set_on_change(self._refresh_info_display)
             self.formatter.set_status('farm', RunStatus.DONE)
-            self.formatter.set_status('stamina_done', RunStatus.DONE)
 
+            # --- 6. 領取每日活躍 ---
             self.formatter.set_status('claim_active', RunStatus.RUNNING)
             self.claim_daily()
             self.formatter.set_status('claim_active', RunStatus.DONE)
+        else:
+            self.formatter.set_status('farm', RunStatus.DONE)
+            self.formatter.update_text('farm', f'刷 {target_name} (已完成，跳過)')
 
+        # --- 7. 領取郵件 ---
+        self.formatter.set_status('claim_mail', RunStatus.RUNNING)
         self.claim_mail()
+        self.formatter.set_status('claim_mail', RunStatus.DONE)
+
+        # --- 8. 領取先約電台 ---
         self.sleep(1)
         self.formatter.set_status('claim_bp', RunStatus.RUNNING)
         self.claim_battle_pass()
         self.formatter.set_status('claim_bp', RunStatus.DONE)
+
         self.log_info('Task completed', notify=True)
 
     def go_to_tower(self):
@@ -182,8 +204,8 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             current = 0
         self.info_set('current daily progress', current)
         if hasattr(self, 'formatter') and self.formatter:
-            self.formatter.update_text('info_active', f"活躍度 {current} / 100")
-            self.formatter.set_status('info_active', RunStatus.DONE)
+            self.formatter.update_text('check_active', f"活躍度 {current} / 100")
+            self.formatter.set_status('check_active', RunStatus.DONE)
         return current, self.get_total_daily_points() >= 100
 
     def get_total_daily_points(self):

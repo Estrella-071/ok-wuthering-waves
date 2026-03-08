@@ -125,10 +125,16 @@ class ProgressFormatter:
             self._notify_change()
 
     def update_text(self, node_id: str, text: str):
-        """更新節點的顯示文字並觸發 UI 刷新。"""
+        """更新指定節點的顯示文字並觸發 UI 刷新。"""
         node = self.get_node(node_id)
         if node:
             node.text = text
+            self._notify_change()
+
+    def update_current_node_text(self, text: str):
+        """更新當前處於 RUNNING 狀態節點的顯示文字並觸發 UI 刷新。"""
+        if self.current_running_node:
+            self.current_running_node.text = text
             self._notify_change()
 
     def _get_visible_children(self, node: TreeNode) -> List[TreeNode]:
@@ -156,11 +162,11 @@ class ProgressFormatter:
             # 狀態文字後綴 (作為 Dict 的 Value)
             status_text = ""
             if node.status == RunStatus.DONE:
-                status_text = f"({self._translate('完成')})"
+                status_text = self._translate('完成')
             elif node.status == RunStatus.FAILED:
-                status_text = f"({self._translate('失敗')})"
+                status_text = self._translate('失敗')
             elif node.status == RunStatus.RUNNING:
-                status_text = f"( {self.SPINNERS[self.spinner_index]} )"
+                status_text = self.SPINNERS[self.spinner_index]
 
             key = f"{prefix}{connector}{self._translate(node.text)}"
 
@@ -193,7 +199,8 @@ class ProgressFormatter:
         return result_dict
 
     def get_formatted_dict(self) -> Dict[str, str]:
-        """產生完整的樹狀字典。"""
+        """產生完整的樹狀字典。每次呼叫時自動推進 Spinner。"""
+        self.update_spin()
         tree_dict = self.build_tree_dict(self.root)
 
         if self._error_msg:
