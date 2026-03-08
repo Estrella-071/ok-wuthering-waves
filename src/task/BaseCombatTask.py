@@ -59,9 +59,25 @@ class BaseCombatTask(CombatCheck):
         self.mouse_pos = None  # 当前鼠标位置
         self.combat_start = 0  # 战斗开始时间戳
 
-        self.char_texts = ['char_1_text', 'char_2_text', 'char_3_text']
         self.add_text_fix({'Ｅ': 'e'})
         self.use_liberation = True
+
+    def get_box_by_name(self, name):
+        """获取指定名称的UI区域盒子对象，支持无声骸时的物理位置重定向。"""
+        char = self.get_current_char()
+        # 只有在明确检测到无声骸时才进行偏移 (E->Q, T->E)
+        if char and getattr(char, 'has_echo', True) is False:
+            if name == 'box_resonance':
+                return super().get_box_by_name('box_echo')
+            if name == 'box_resonance_cd':
+                # 映射 CD 區域：Resonance CD 現在在原 Echo 的 CD 位
+                return super().get_box_by_name('box_echo_cd') or super().get_box_by_name('box_echo')
+            if name == 'box_extra_action':
+                return super().get_box_by_name('box_resonance')
+            if name == 'box_extra_action_cd':
+                return super().get_box_by_name('box_resonance_cd')
+        
+        return super().get_box_by_name(name)
 
     def add_freeze_duration(self, start, duration=-1.0, freeze_time=0.1):
         """添加冻结持续时间。用于精确计算技能冷却等。
@@ -137,7 +153,8 @@ class BaseCombatTask(CombatCheck):
     def refresh_cd(self):
         if self.scene.cd_refreshed:
             return
-        index = self.get_current_char().index
+        char = self.get_current_char()
+        index = char.index
         cds = self.cds.get(index)
         if cds is None:
             cds = {}
@@ -146,15 +163,23 @@ class BaseCombatTask(CombatCheck):
         cds['resonance'] = 0
         cds['liberation'] = 0
         cds['echo'] = 0
+        cds['extra_action'] = 0
         texts = self.ocr(0.81, 0.86, 0.97, 0.93, frame_processor=isolate_white_text_to_black, match=cd_regex)
+        
+        has_echo = getattr(char, 'has_echo', True)
         for text in texts:
             cd = convert_cd(text)
             if text.x < self.width_of_screen(0.86):
-                cds['resonance'] = cd
+                # 正常時是 Resonance, 無聲骸時是 Tool (Extra Action)
+                key = 'resonance' if has_echo else 'extra_action'
+                cds[key] = cd
             elif text.x > self.width_of_screen(0.91):
+                # Liberation 位置不變
                 cds['liberation'] = cd
             else:
-                cds['echo'] = cd
+                # 正常時是 Echo, 無聲骸時是 Resonance
+                key = 'echo' if has_echo else 'resonance'
+                cds[key] = cd
         self.scene.cd_refreshed = True
         self.log_debug(f'cd refreshed: {cds} {time.time() - cds["time"]}')
 
