@@ -874,6 +874,7 @@ class BaseWWTask(BaseTask):
             self._logged_in = True
             return True, current, exist_count + 1
         else:
+            self.log_info(f'in_team check failed: exist_count={exist_count}, arr={arr}')
             return False, -1, exist_count + 1
 
         # Function to check if a component forms a ring

@@ -1,0 +1,48 @@
+
+[1;33m Tips:[0m QFluentWidgets Pro is now released. Click [1;96mhttps://qfluentwidgets.com/pages/pro[0m to learn more about it.
+
+File: media__1772777544173.png
+  BaseChar box (full check) white_percent: 0.00000
+  Changli box (4-bar check) white_percent: 0.00000
+  Sections white_percent: 0.0000, 0.0000, 0.0000, 0.0000, 
+
+File: media__1772795039815.png
+  BaseChar box (full check) white_percent: 0.00000
+  Changli box (4-bar check) white_percent: 0.00000
+  Sections white_percent: 0.0000, 0.0000, 0.0000, 0.0000, 
+
+File: media__1772795875163.png
+  BaseChar box (full check) white_percent: 0.00000
+  Changli box (4-bar check) white_percent: 0.00000
+  Sections white_percent: 0.0000, 0.0000, 0.0000, 0.0000, 
+
+File: media__1772810178736.png
+  BaseChar box (full check) white_percent: 1.00000
+  Changli box (4-bar check) white_percent: 1.00000
+  Sections white_percent: 1.0000, 1.0000, 1.0000, 1.0000, 
+
+File: media__1772810836601.png
+  BaseChar box (full check) white_percent: 0.71429
+  Changli box (4-bar check) white_percent: 0.66667
+  Sections white_percent: 0.6667, 0.6667, 0.6667, 0.6667, 
+
+File: media__1772876625785.png
+  BaseChar box (full check) white_percent: 0.00000
+  Changli box (4-bar check) white_percent: 0.00000
+  Sections white_percent: 0.0000, 0.0000, 0.0000, 0.0000, 
+
+File: media__1772876690220.png
+  BaseChar box (full check) white_percent: 0.00000
+  Changli box (4-bar check) white_percent: 0.00000
+  Sections white_percent: 0.0000, 0.0000, 0.0000, 0.0000, 
+
+File: media__1772877643339.png
+  BaseChar box (full check) white_percent: 0.00000
+  Changli box (4-bar check) white_percent: 0.00000
+  Sections white_percent: 0.0000, 0.0000, 0.0000, 0.0000, 
+
+File: media__1772877645081.png
+  BaseChar box (full check) white_percent: 0.00000
+  Changli box (4-bar check) white_percent: 0.00000
+  Sections white_percent: 0.0000, 0.0000, 0.0000, 0.0000, 
+
