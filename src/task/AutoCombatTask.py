@@ -32,6 +32,7 @@ class AutoCombatTask(BaseCombatTask, TriggerTask):
         self.op_index = 0
 
     def run(self):
+        self.scene.reset()
         ret = False
         if not self.scene.in_team(self.in_team_and_world):
             return ret
