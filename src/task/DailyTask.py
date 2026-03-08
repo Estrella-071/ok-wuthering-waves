@@ -55,6 +55,10 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
 
     def run(self):
         self.formatter = ProgressFormatter('每日一條龍')
+        # 綁定回呼：每當樹狀結構變動時立即刷新 UI 字典
+        self.formatter.set_on_change(self._refresh_info_display)
+
+        # 預先註冊所有節點 (PENDING 狀態不渲染，只有 set_status 後才會出現)
         self.formatter.add_node('login', '登入')
         self.formatter.add_node('monthly', '領取月卡')
         self.formatter.add_node('tower', '傳送至深塔')
@@ -70,7 +74,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.formatter.set_status('login', RunStatus.RUNNING)
         self.ensure_main(time_out=180)
         self.formatter.set_status('login', RunStatus.DONE)
-        
+
         self.formatter.set_status('tower', RunStatus.RUNNING)
         self.go_to_tower()
         self.formatter.set_status('tower', RunStatus.DONE)
@@ -90,7 +94,9 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             except Exception as e:
                 self.log_error("NightmareNestTask Failed", e)
                 self.ensure_main(time_out=180)
+        self.formatter.set_status('info', RunStatus.RUNNING)
         used_stamina, completed = self.open_daily()
+        self.formatter.set_status('info', RunStatus.DONE)
 
         self.send_key('esc', after_sleep=1)
         self.formatter.set_status('farm', RunStatus.RUNNING)
@@ -100,14 +106,17 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
                 if target == self.support_tasks[0]:
                     task = self.get_task_by_class(TacetTask)
                     task.formatter = self.formatter
+                    task.formatter.set_on_change(task._refresh_info_display)
                     task.farm_tacet(daily=True, used_stamina=used_stamina, config=self.config)
                 elif target == self.support_tasks[1]:
                     task = self.get_task_by_class(ForgeryTask)
                     task.formatter = self.formatter
+                    task.formatter.set_on_change(task._refresh_info_display)
                     task.farm_forgery(daily=True, used_stamina=used_stamina, config=self.config)
                 else:
                     task = self.get_task_by_class(SimulationTask)
                     task.formatter = self.formatter
+                    task.formatter.set_on_change(task._refresh_info_display)
                     task.farm_simulation(daily=True, used_stamina=used_stamina, config=self.config)
                 self.sleep(4)
             self.formatter.set_status('farm', RunStatus.DONE)
