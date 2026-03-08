@@ -414,16 +414,18 @@ class BaseChar:
             self.last_echo = time.time()
 
     def click_echo(self, duration=0, sleep_time=0, time_out=1):
-        """尝试点击并释放声骸技能。
-
+        """嘗試点击并释放声骸技能。
+        
         Args:
             duration (float, optional): 技能期望的持续按键时间 (用于持续型声骸)。默认为 0。
             sleep_time (float, optional): 释放后的休眠时间 (似乎未使用)。默认为 0。
-            time_out (float, optional): 操作超时时间，召唤型声骸可设为 0。默认为 1。
+            time_out (float, optional): 操作超时时间，召唤型声骸可设為 0。默认为 1。
 
         Returns:
             bool: 如果成功点击则返回 True。
         """
+        if not getattr(self, 'has_echo', True):
+            return False
         if time_out == 0 and self.echo_available():
             self.send_echo_key()
             self.update_echo_cd()
