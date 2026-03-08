@@ -31,8 +31,8 @@ class DiagnosisTask(WWOneTimeTask, BaseCombatTask):
             char = self.get_current_char()
 
             if not char:
-                self.info.clear()
-                self.info['Current Character'] = "None"
+                self._internal_info.clear()
+                self.info_set('Current Character', "None")
                 self.start = time.time()
             else:
                 start = time.time()
@@ -42,17 +42,17 @@ class DiagnosisTask(WWOneTimeTask, BaseCombatTask):
                 start = time.time()
                 self.refresh_cd()
                 ocr_cost += time.time() - start
-                self.info['Capture Frame Count'] = self.info.get('Capture Frame Count', 0) + 1
-                self.info['Capture Frame Rate'] = round(
-                    self.info['Capture Frame Count'] / (capture_cost or 1),
-                    2)
-                self.info['OCR'] = ocr_cost / self.info['Capture Frame Count']
-                self.info['Game Resolution'] = f'{self.frame.shape[1]}x{self.frame.shape[0]}'
-                self.info['Current Character'] = str(char)
-                self.info['Resonance CD'] = self.get_cd('resonance')
-                self.info['Echo CD'] = self.get_cd('echo')
-                self.info['Liberation CD'] = self.get_cd('liberation')
-                self.info['Concerto'] = char.get_current_con()
+                self.info_incr('Capture Frame Count')
+                self.info_set('Capture Frame Rate', round(
+                    self.info_get('Capture Frame Count') / (capture_cost or 1),
+                    2))
+                self.info_set('OCR', ocr_cost / self.info_get('Capture Frame Count'))
+                self.info_set('Game Resolution', f'{self.frame.shape[1]}x{self.frame.shape[0]}')
+                self.info_set('Current Character', str(char))
+                self.info_set('Resonance CD', self.get_cd('resonance'))
+                self.info_set('Echo CD', self.get_cd('echo'))
+                self.info_set('Liberation CD', self.get_cd('liberation'))
+                self.info_set('Concerto', char.get_current_con())
 
     def choose_level(self, start):
         y = 0.17

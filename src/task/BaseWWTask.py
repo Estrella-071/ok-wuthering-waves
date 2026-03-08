@@ -37,12 +37,62 @@ class BaseWWTask(BaseTask):
         self._logged_in = False
         self.scene: WWScene | None = None
         self.formatter = None
+        self._internal_info = {}
+
+    def translate_mapping(self, key):
+        try:
+            from ok.i18n import _
+            return _(key)
+        except ImportError:
+            return key
+
+    def info_set(self, key, value):
+        self._internal_info[key] = value
+        
+        mapping = {
+            'Teleport to Tacet Suppression': ('運作統計', '傳送至無音區'),
+            'Teleport to Simulation Challenge': ('運作統計', '傳送至模擬訓練'),
+            'Teleport to Forgery Challenge': ('運作統計', '傳送至凝素領域'),
+            'Stars': ('運作統計', '探索星級'),
+            'Echo Count': ('運作統計', '聲骸獲取數'),
+            'Echo per Hour': ('運作統計', '每小時獲取數'),
+            'Combat Count': ('運作統計', '戰鬥次數'),
+            '成功声骸数量': ('運作統計', '成功強化聲骸'),
+            '失败声骸数量': ('運作統計', '失敗強化聲骸'),
+        }
+        
+        if hasattr(self, 'formatter') and self.formatter is not None:
+            if key in mapping:
+                node_parent, translate_key = mapping[key]
+                parent_id = 'statistics'
+                if not self.formatter.get_node(parent_id):
+                    self.formatter.add_node(parent_id, node_parent)
+                
+                translated_key = self.translate_mapping(translate_key)
+                node_id = f'stat_{translate_key}'
+                stat_text = f"{translated_key}: {value}"
+                
+                node = self.formatter.get_node(node_id)
+                if node:
+                    self.formatter.update_text(node_id, stat_text)
+                else:
+                    self.formatter.add_node(node_id, stat_text, parent_id)
+
+    def info_incr(self, key, value=1):
+        self._internal_info[key] = self._internal_info.get(key, 0) + value
+        self.info_set(key, self._internal_info[key])
+        
+    def info_get(self, key, default=None):
+        return self._internal_info.get(key, default)
 
     def next_frame(self):
         super().next_frame()
         if hasattr(self, 'formatter') and self.formatter is not None:
-            if self.formatter.update_spin():
-                self.info_set('current task', self.formatter.get_formatted_string())
+            # 由於我們需要即刻將外部的變化映射到 Dictionary，所以每幀呼叫 build dict，這在 UI 重繪上很有效率
+            if self.formatter.update_spin() or True: 
+                formatted_dict = self.formatter.get_formatted_dict()
+                self.info.clear()
+                self.info.update(formatted_dict)
 
     def is_open_world_auto_combat(self):
         from src.task.AutoCombatTask import AutoCombatTask
@@ -658,9 +708,9 @@ class BaseWWTask(BaseTask):
 
     def incr_drop(self, dropped):
         if dropped:
-            self.info['Echo Count'] = self.info.get('Echo Count', 0) + 1
-            self.info['Echo per Hour'] = round(
-                self.info.get('Echo Count', 0) / max(time.time() - self.start_time, 1) * 3600)
+            self.info_incr('Echo Count', 1)
+            self.info_set('Echo per Hour', round(
+                self.info_get('Echo Count', 0) / max(time.time() - self.start_time, 1) * 3600))
 
     def should_check_monthly_card(self):
         if self.next_monthly_card_start > 0:

@@ -81,42 +81,61 @@ class ProgressFormatter:
         if node:
             node.text = text
 
-    def build_tree_string(self, node: TreeNode, prefix: str = "", is_last: bool = True, is_root: bool = True) -> str:
-        res = ""
+    def build_tree_dict(self, node: TreeNode, prefix: str = "", is_last: bool = True, is_root: bool = True, result_dict: dict = None) -> dict:
+        if result_dict is None:
+            result_dict = {}
+            
         if not is_root:
             connector = "└ " if is_last else "├ "
             
-            # 狀態文字後綴
+            # 狀態文字後綴 (作為 Dict 的 Value)
             status_text = ""
             if node.status == RunStatus.DONE:
-                status_text = f" ({self._translate('完成')})"
+                status_text = f"({self._translate('完成')})"
             elif node.status == RunStatus.FAILED:
-                status_text = f" ({self._translate('失敗')})"
+                status_text = f"({self._translate('失敗')})"
             elif node.status == RunStatus.RUNNING:
-                status_text = f" ( {self.spinners[self.spinner_index]} )"
+                status_text = f"({self.spinners[self.spinner_index]})"
                 
-            res += f"{prefix}{connector}{self._translate(node.text)}{status_text}\n"
+            key = f"{prefix}{connector}{self._translate(node.text)}"
+            
+            # 確保 Dictionary Key 唯一性 (使用零寬空白)
+            original_key = key
+            counter = 1
+            while key in result_dict:
+                key = original_key + ("\u200b" * counter)
+                counter += 1
+                
+            result_dict[key] = status_text
             
             # 子節點的前綴
             child_prefix = prefix + ("   " if is_last else "│  ")
         else:
-            res += f"{self._translate(node.text)}\n"
+            key = f"{self._translate(node.text)}"
+            original_key = key
+            counter = 1
+            while key in result_dict:
+                key = original_key + ("\u200b" * counter)
+                counter += 1
+                
+            result_dict[key] = ""
             child_prefix = prefix
             
         for i, child in enumerate(node.children):
-            res += self.build_tree_string(child, child_prefix, i == len(node.children) - 1, False)
+            self.build_tree_dict(child, child_prefix, i == len(node.children) - 1, False, result_dict)
             
-        return res
+        return result_dict
 
-    def get_formatted_string(self) -> str:
-        # 使用 HTML 標籤來防換行與設定等寬字體，這在 Qt 支援 RichText 時有效
-        # 自動捲動部分通常由外部 UI 元件 (如 ScrollArea) 處理，或者是表格的自動排版
-        # 但我們可以用 nowrap 讓排版不被破壞
-        tree_str = self.build_tree_string(self.root)
+    def get_formatted_dict(self) -> dict:
+        tree_dict = self.build_tree_dict(self.root)
         
         if self._error_msg:
-            tree_str += f"\n  └ [{self._translate('錯誤')}] {self._error_msg}"
+            key = f"  └ [{self._translate('錯誤')}]"
+            original_key = key
+            counter = 1
+            while key in tree_dict:
+                key = original_key + ("\u200b" * counter)
+                counter += 1
+            tree_dict[key] = self._error_msg
             
-        # 使用 <pre> 標籤以保持空格和換行，並強制不換行
-        html_str = f'<pre style="font-family: monospace; white-space: pre; margin: 0;">{tree_str}</pre>'
-        return html_str
+        return tree_dict

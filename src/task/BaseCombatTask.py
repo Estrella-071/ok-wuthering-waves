@@ -248,7 +248,7 @@ class BaseCombatTask(CombatCheck):
             self.formatter.update_text('combat_detail', '戰鬥中')
             
         self.load_chars()
-        self.info['Combat Count'] = self.info.get('Combat Count', 0) + 1
+        self.info_incr('Combat Count')
         try:
             while self.in_combat():
                 logger.debug(f'combat_once loop {self.chars}')
