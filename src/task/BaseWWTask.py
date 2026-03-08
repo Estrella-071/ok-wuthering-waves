@@ -40,59 +40,85 @@ class BaseWWTask(BaseTask):
         self._internal_info = {}
 
     def translate_mapping(self, key):
+        """將英文鍵名轉換為翻譯後的文字。"""
         try:
             from ok.i18n import _
             return _(key)
         except ImportError:
             return key
 
+    # 需要映射到「運作統計」節點的舊有 info key
+    _INFO_MAPPING = {
+        'Teleport to Tacet Suppression': '傳送至無音區',
+        'Teleport to Simulation Challenge': '傳送至模擬訓練',
+        'Teleport to Forgery Challenge': '傳送至凝素領域',
+        'Stars': '探索星級',
+        'Echo Count': '聲骸獲取數',
+        'Echo per Hour': '每小時獲取數',
+        'Combat Count': '戰鬥次數',
+        '成功声骸数量': '成功強化聲骸',
+        '失败声骸数量': '失敗強化聲骸',
+    }
+
     def info_set(self, key, value):
+        """覆寫原始 info_set，當 formatter 活躍時將訊息導入樹狀結構，否則回退為原始行為。"""
+        # 安全檢查：初始化階段 _internal_info 可能尚未被建立
+        if not hasattr(self, '_internal_info'):
+            super().info_set(key, value)
+            return
+
         self._internal_info[key] = value
-        
-        mapping = {
-            'Teleport to Tacet Suppression': ('運作統計', '傳送至無音區'),
-            'Teleport to Simulation Challenge': ('運作統計', '傳送至模擬訓練'),
-            'Teleport to Forgery Challenge': ('運作統計', '傳送至凝素領域'),
-            'Stars': ('運作統計', '探索星級'),
-            'Echo Count': ('運作統計', '聲骸獲取數'),
-            'Echo per Hour': ('運作統計', '每小時獲取數'),
-            'Combat Count': ('運作統計', '戰鬥次數'),
-            '成功声骸数量': ('運作統計', '成功強化聲骸'),
-            '失败声骸数量': ('運作統計', '失敗強化聲骸'),
-        }
-        
-        if hasattr(self, 'formatter') and self.formatter is not None:
-            if key in mapping:
-                node_parent, translate_key = mapping[key]
-                parent_id = 'statistics'
-                if not self.formatter.get_node(parent_id):
-                    self.formatter.add_node(parent_id, node_parent)
-                
-                translated_key = self.translate_mapping(translate_key)
-                node_id = f'stat_{translate_key}'
-                stat_text = f"{translated_key}: {value}"
-                
-                node = self.formatter.get_node(node_id)
-                if node:
-                    self.formatter.update_text(node_id, stat_text)
-                else:
-                    self.formatter.add_node(node_id, stat_text, parent_id)
+
+        # 如果 formatter 尚未建立 (例如任務尚未開始)，則使用原始方式直接寫入 self.info
+        if not hasattr(self, 'formatter') or self.formatter is None:
+            super().info_set(key, value)
+            return
+
+        # formatter 活躍時，將映射表中的 key 收納進「運作統計」節點
+        if key in self._INFO_MAPPING:
+            translate_key = self._INFO_MAPPING[key]
+            parent_id = 'statistics'
+            if not self.formatter.get_node(parent_id):
+                self.formatter.add_node(parent_id, '運作統計')
+
+            node_id = f'stat_{translate_key}'
+            stat_text = f"{translate_key}: {value}"
+
+            node = self.formatter.get_node(node_id)
+            if node:
+                self.formatter.update_text(node_id, stat_text)
+            else:
+                self.formatter.add_node(node_id, stat_text, parent_id)
+
+        # 每次 info_set 都立即重繪 UI 字典，確保即使沒有 next_frame 也能看到更新
+        self._refresh_info_display()
 
     def info_incr(self, key, value=1):
+        """覆寫原始 info_incr，累加後透過 info_set 推送。"""
+        if not hasattr(self, '_internal_info'):
+            super().info_incr(key, value)
+            return
         self._internal_info[key] = self._internal_info.get(key, 0) + value
         self.info_set(key, self._internal_info[key])
-        
+
     def info_get(self, key, default=None):
+        """從內部資料字典取值而不是從 UI 字典。"""
+        if not hasattr(self, '_internal_info'):
+            return default
         return self._internal_info.get(key, default)
+
+    def _refresh_info_display(self):
+        """將 formatter 的字典渲染結果同步到 self.info 以更新 UI。"""
+        if hasattr(self, 'formatter') and self.formatter is not None:
+            formatted_dict = self.formatter.get_formatted_dict()
+            self.info.clear()
+            self.info.update(formatted_dict)
 
     def next_frame(self):
         super().next_frame()
         if hasattr(self, 'formatter') and self.formatter is not None:
-            # 由於我們需要即刻將外部的變化映射到 Dictionary，所以每幀呼叫 build dict，這在 UI 重繪上很有效率
-            if self.formatter.update_spin() or True: 
-                formatted_dict = self.formatter.get_formatted_dict()
-                self.info.clear()
-                self.info.update(formatted_dict)
+            self.formatter.update_spin()
+            self._refresh_info_display()
 
     def is_open_world_auto_combat(self):
         from src.task.AutoCombatTask import AutoCombatTask
