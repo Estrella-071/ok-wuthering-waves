@@ -552,35 +552,27 @@ class BaseCombatTask(CombatCheck):
                 else:
                     char.is_current_char = False
         self.combat_start = time.time()
-        # 移除單人限制，允許單獨角色進行自動戰鬥
-        self.info_set('Chars', self.chars)
-        for c in self.chars:
-            if c is not None:
+        if len(self.chars) >= 2:
+            self.info_set('Chars', self.chars)
+            for c in self.chars:
                 self.log_info(f'loaded chars success {c} {c.confidence}')
-        return True
+            return True
 
     def update_current_char_echo_status(self, char):
         """动态检测当前激活角色是否装备了声骸 (基于UI平移规则)"""
         try:
-            # 檢測 Resonance 技能箱體內是否存在 'r' 字母
-            # 正常 layout: [Q-Echo] [E-Resonance] [R-Liberation]
-            # 偏移 layout: [E-Resonance] [R-Liberation] [T-Exploration]
-            # 所以檢查原本應該是 'E' 的箱體，如果變成了 'r'，表示發生了左移
-            box_e = self.get_box_by_name('e') 
-            if box_e is None:
+            box_r = self.get_box_by_name('r')
+            if box_r is None:
+                self.logger.warning("Could not find box 'r' for echo status check")
                 return
-            
-            box = box_e.scale(1.2)
+            box = box_r.scale(1.2)
             best = self.find_best_match_in_box(box, ['t', 'e', 'r', 'q'], threshold=0.7)
-            
             if best:
-                if best.name == 'r':
-                    # 原本 E 的位置變成 R，代表 Echo 消失了
+                if best.name in ['e', 't']:
                     if getattr(char, 'has_echo', True):
-                        self.log_info(f"{char.name} has NO echo equipped (detected 'R' in Resonance slot).")
+                        self.log_info(f"{char.name} has NO echo equipped (detected '{best.name}' in echo slot).")
                         char.has_echo = False
-                elif best.name == 'e':
-                    # 原本 E 的位元置還是 E，代表 Echo 還在
+                else:
                     char.has_echo = True
         except Exception as e:
             self.logger.error(f"Error in update_current_char_echo_status: {e}")

@@ -244,7 +244,7 @@ class CombatCheck(BaseWWTask):
         if self.is_browser():
             has_name += '_cloud'
             no_name += '_cloud'
-        elif self.width == 1600:
+        elif abs(self.width / self.height - 16 / 9) < 0.1:
             has_name += '_169'
             no_name += '_169'
         return has_name, no_name
@@ -289,9 +289,9 @@ class CombatCheck(BaseWWTask):
                 logger.info(f'target lost try retarget {self.target_enemy_time_out}')
                 start = time.time()
                 while time.time() - start < self.target_enemy_time_out:
-                    self.middle_click(interval=0.2)
-                    if self.has_target():
+                    if self.has_target() or self.check_health_bar():
                         return True
+                    self.middle_click(interval=0.5)
                     self.next_frame()
 
     def has_health_bar(self):

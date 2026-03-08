@@ -859,26 +859,8 @@ class BaseWWTask(BaseTask):
         c2 = self.find_one('char_2_text', threshold=threshold)
         c3 = self.find_one('char_3_text', threshold=threshold)
         arr = [c1, c2, c3]
-        conf_array = [round(c.confidence, 3) if c else 0 for c in arr]
-        
-        # 如果模板匹配完全失效，嘗試透過 OCR 檢查側邊欄
-        exist_count = sum(1 for c in arr if c is not None)
-        if exist_count == 0:
-            self.log_debug("Template matching failed for characters, trying OCR...")
-            # 側邊欄區域大約在螢幕右側 85%-98% 寬度，20%-60% 高度
-            ocr_box = self.box_of_screen(0.85, 0.15, 0.98, 0.65)
-            ocr_results = self.ocr(box=ocr_box, name='sidebar_ocr')
-            # 尋找包含 "Lv" 或數字的內容
-            lv_found = 0
-            for res in ocr_results:
-                if 'lv' in res.name.lower() or any(char.isdigit() for char in res.name):
-                    lv_found += 1
-            if lv_found >= 1:
-                self.log_info(f"OCR detected {lv_found} character-like elements in sidebar. Force in_team=True.")
-                # 模擬匹配結果以進入後續流程
-                self._logged_in = True
-                return True, 0, lv_found + 1 # 假設當前是第一個角色，隊伍人數為 lv_found+1
-
+        conf_str = f"conf: {[round(c.confidence, 3) if c else 0 for c in arr]}"
+        # logger.debug(f'in_team check {arr}')
         current = -1
         exist_count = 0
         for i in range(len(arr)):
@@ -887,12 +869,11 @@ class BaseWWTask(BaseTask):
                     current = i
             else:
                 exist_count += 1
-        
-        if exist_count >= 1: # 只要有一個匹配到就算在隊伍中
+        if exist_count == 2 or exist_count == 1:
             self._logged_in = True
             return True, current, exist_count + 1
         else:
-            self.log_info(f'in_team check failed: exist_count={exist_count}, conf: {conf_array}')
+            self.log_info(f'in_team check failed: exist_count={exist_count}, {conf_str}')
             return False, -1, exist_count + 1
 
         # Function to check if a component forms a ring
