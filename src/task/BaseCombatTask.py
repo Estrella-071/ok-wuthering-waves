@@ -551,11 +551,11 @@ class BaseCombatTask(CombatCheck):
                 else:
                     char.is_current_char = False
         self.combat_start = time.time()
-        if len(self.chars) >= 2:
-            self.info_set('Chars', self.chars)
-            for c in self.chars:
-                self.log_info(f'loaded chars success {c} {c.confidence}')
-            return True
+        self.info_set('Chars', self.chars)
+        for i, c in enumerate(self.chars):
+            if c:
+                self.log_info(f'Slot {i+1} loaded: {c.char_name} (conf: {c.confidence:.2f})')
+        return True
 
     def update_current_char_echo_status(self, char):
         """动态检测当前激活角色是否装备了声骸 (基于UI平移规则)"""

@@ -869,10 +869,13 @@ class BaseWWTask(BaseTask):
                     current = i
             else:
                 exist_count += 1
-        if exist_count == 2 or exist_count == 1:
+        if exist_count >= 0:
             self._logged_in = True
-            return True, current, exist_count + 1
+            # 如果 exist_count 為 0, 則為單人隊伍, current 預設為 0
+            res_current = current if current != -1 else 0
+            return True, res_current, exist_count + 1
         else:
+            self.screenshot('in_team_failed')
             self.log_info(f'in_team check failed: exist_count={exist_count}, {conf_str}')
             return False, -1, exist_count + 1
 

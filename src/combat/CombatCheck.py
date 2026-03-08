@@ -281,6 +281,10 @@ class CombatCheck(BaseWWTask):
             logger.debug(f'has_target: best={best.name}, conf={best.confidence}, box={has_name}')
         elif not best and self.debug:
             logger.debug(f'has_target: NO match found for box {has_name}')
+        if best:
+            self.logger.info(f'has_target: best={best.name}, conf={best.confidence:.3f}')
+        else:
+            self.logger.info(f'has_target: no match found in {has_name}')
         return best and best.name == has_name
 
     def target_enemy(self, wait=True):
@@ -290,7 +294,8 @@ class CombatCheck(BaseWWTask):
             if self.has_target():
                 return True
             else:
-                logger.info(f'target lost try retarget {self.target_enemy_time_out}')
+                logger.info(f'target lost try retarget')
+                start = time.time() # Define start variable
                 while time.time() - start < self.target_enemy_time_out:
                     if self.has_target() or self.check_health_bar():
                         return True
