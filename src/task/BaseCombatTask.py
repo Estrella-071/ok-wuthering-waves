@@ -498,14 +498,13 @@ class BaseCombatTask(CombatCheck):
             self.hot_key_verified = True
             scale = 1.2
             
-            box_echo_slot = self.get_box_by_name('r').scale(scale)
+            box_echo_slot = self.get_box_by_name('q').scale(scale)
             best_echo = self.find_best_match_in_box(box_echo_slot, ['t', 'e', 'r', 'q'], threshold=0.7)
             if best_echo and best_echo.name in ['e', 't']:
                 self.log_info(f"UI Shift detected (Echo missing). Skipping hotkey learning to avoid corruption.")
             else:
-                # self.set_key('Resonance Key', self.get_box_by_name('e').scale(scale))
                 self.set_key('Echo Key', box_echo_slot)
-                self.set_key('Liberation Key', self.get_box_by_name('q').scale(scale))
+                self.set_key('Liberation Key', self.get_box_by_name('r').scale(scale))
                 # self.set_key('Tool Key', self.get_box_by_name('t').scale(scale))
 
             self.info_set('Liberation Key', self.get_liberation_key())
@@ -561,11 +560,11 @@ class BaseCombatTask(CombatCheck):
     def update_current_char_echo_status(self, char):
         """动态检测当前激活角色是否装备了声骸 (基于UI平移规则)"""
         try:
-            box_r = self.get_box_by_name('r')
-            if box_r is None:
-                self.logger.warning("Could not find box 'r' for echo status check")
+            box_q = self.get_box_by_name('q')
+            if box_q is None:
+                self.logger.warning("Could not find box 'q' for echo status check")
                 return
-            box = box_r.scale(1.2)
+            box = box_q.scale(1.2)
             best = self.find_best_match_in_box(box, ['t', 'e', 'r', 'q'], threshold=0.7)
             if best:
                 if best.name in ['e', 't']:

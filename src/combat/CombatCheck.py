@@ -244,9 +244,9 @@ class CombatCheck(BaseWWTask):
         if self.is_browser():
             has_name += '_cloud'
             no_name += '_cloud'
-        elif abs(self.width / self.height - 16 / 9) < 0.1:
-            has_name += '_169'
-            no_name += '_169'
+        # elif abs(self.width / self.height - 16 / 9) < 0.1:
+        #     has_name += '_169'
+        #     no_name += '_169'
         return has_name, no_name
 
     def has_target(self, double_check=False):
@@ -277,6 +277,10 @@ class CombatCheck(BaseWWTask):
                 else:
                     self.sleep(1)
                     return self.has_target(double_check=True)
+        if best and self.debug:
+            logger.debug(f'has_target: best={best.name}, conf={best.confidence}, box={has_name}')
+        elif not best and self.debug:
+            logger.debug(f'has_target: NO match found for box {has_name}')
         return best and best.name == has_name
 
     def target_enemy(self, wait=True):
@@ -287,12 +291,13 @@ class CombatCheck(BaseWWTask):
                 return True
             else:
                 logger.info(f'target lost try retarget {self.target_enemy_time_out}')
-                start = time.time()
                 while time.time() - start < self.target_enemy_time_out:
                     if self.has_target() or self.check_health_bar():
                         return True
                     self.middle_click(interval=0.5)
                     self.next_frame()
+                self.screenshot('target_enemy_failed')
+                logger.error('target_enemy failed, try recheck break out of combat')
 
     def has_health_bar(self):
         if self._in_combat:
