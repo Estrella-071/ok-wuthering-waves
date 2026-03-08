@@ -12,6 +12,7 @@ from src.task.TacetTask import TacetTask
 from src.task.SimulationTask import SimulationTask
 from src.task.WWOneTimeTask import WWOneTimeTask
 from src.task.BaseCombatTask import BaseCombatTask
+from src.utils.ProgressFormatter import ProgressFormatter, RunStatus
 
 logger = Logger.get_logger(__name__)
 
@@ -53,9 +54,26 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.description = "Login, claim monthly card, farm echo, and claim daily reward"
 
     def run(self):
+        self.formatter = ProgressFormatter('每日一條龍')
+        self.formatter.add_node('login', '登入')
+        self.formatter.add_node('monthly', '領取月卡')
+        self.formatter.add_node('tower', '傳送至深塔')
+        self.formatter.add_node('info', '確認資訊')
+        self.formatter.add_node('info_active', '活躍度', 'info')
+        self.formatter.add_node('info_stamina', '結晶玻片', 'info')
+        self.formatter.add_node('farm', f"刷{self.config.get('Which to Farm', self.support_tasks[0])}")
+        self.formatter.add_node('stamina_done', '結晶消耗完成')
+        self.formatter.add_node('claim_active', '開始領取活躍度')
+        self.formatter.add_node('claim_bp', '領取先約電台')
+
         WWOneTimeTask.run(self)
+        self.formatter.set_status('login', RunStatus.RUNNING)
         self.ensure_main(time_out=180)
+        self.formatter.set_status('login', RunStatus.DONE)
+        
+        self.formatter.set_status('tower', RunStatus.RUNNING)
         self.go_to_tower()
+        self.formatter.set_status('tower', RunStatus.DONE)
 
         condition1 = self.config.get('Auto Farm all Nightmare Nest')
         condition2 = self.config.get('Farm Nightmare Nest for Daily Echo')
@@ -75,24 +93,35 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         used_stamina, completed = self.open_daily()
 
         self.send_key('esc', after_sleep=1)
+        self.formatter.set_status('farm', RunStatus.RUNNING)
         if not completed:
             if used_stamina < 180:
                 target = self.config.get('Which to Farm', self.support_tasks[0])
                 if target == self.support_tasks[0]:
-                    self.get_task_by_class(TacetTask).farm_tacet(daily=True, used_stamina=used_stamina,
-                                                                 config=self.config)
+                    task = self.get_task_by_class(TacetTask)
+                    task.formatter = self.formatter
+                    task.farm_tacet(daily=True, used_stamina=used_stamina, config=self.config)
                 elif target == self.support_tasks[1]:
-                    self.get_task_by_class(ForgeryTask).farm_forgery(daily=True, used_stamina=used_stamina,
-                                                                     config=self.config)
+                    task = self.get_task_by_class(ForgeryTask)
+                    task.formatter = self.formatter
+                    task.farm_forgery(daily=True, used_stamina=used_stamina, config=self.config)
                 else:
-                    self.get_task_by_class(SimulationTask).farm_simulation(daily=True, used_stamina=used_stamina,
-                                                                           config=self.config)
+                    task = self.get_task_by_class(SimulationTask)
+                    task.formatter = self.formatter
+                    task.farm_simulation(daily=True, used_stamina=used_stamina, config=self.config)
                 self.sleep(4)
+            self.formatter.set_status('farm', RunStatus.DONE)
+            self.formatter.set_status('stamina_done', RunStatus.DONE)
+
+            self.formatter.set_status('claim_active', RunStatus.RUNNING)
             self.claim_daily()
+            self.formatter.set_status('claim_active', RunStatus.DONE)
 
         self.claim_mail()
         self.sleep(1)
+        self.formatter.set_status('claim_bp', RunStatus.RUNNING)
         self.claim_battle_pass()
+        self.formatter.set_status('claim_bp', RunStatus.DONE)
         self.log_info('Task completed', notify=True)
 
     def go_to_tower(self):
@@ -143,6 +172,9 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         else:
             current = 0
         self.info_set('current daily progress', current)
+        if hasattr(self, 'formatter') and self.formatter:
+            self.formatter.update_text('info_active', f"活躍度 {current} / 100")
+            self.formatter.set_status('info_active', RunStatus.DONE)
         return current, self.get_total_daily_points() >= 100
 
     def get_total_daily_points(self):

@@ -36,17 +36,55 @@ class DomainTask(WWOneTimeTask, BaseCombatTask):
         if self.stamina_once <= 0:
             raise RuntimeError('"self.stamina_once" must be override')
         self.info_incr('used stamina', 0)
+        
+        from src.utils.ProgressFormatter import RunStatus
+        import math
+        total_rounds = 1
+        if must_use > 0:
+            total_rounds = math.ceil(must_use / self.stamina_once)
+            
+        round_count = 0
         while True:
+            round_count += 1
+            combat_node_id = f'combat_{round_count}'
+            if hasattr(self, 'formatter') and self.formatter:
+                round_str = f"戰鬥 {round_count}/{total_rounds}" if must_use > 0 else f"戰鬥 {round_count}"
+                # 如果是 Simulation 或 Forgery，由於沒有 DailyTask 那麼複雜的階層，我們可能是在 Root 節點下或者 Daily 的 farm 節點下
+                parent_id = 'farm' if self.formatter.get_node('farm') else 'root'
+                if round_count == 1:
+                    # 第一回合如果還沒有 tp 狀態，補上一個
+                    tp_node = self.formatter.get_node('tp')
+                    if tp_node:
+                        self.formatter.set_status('tp', RunStatus.DONE)
+                        
+                self.formatter.add_node(combat_node_id, f"狀態: {round_str}", parent_id=parent_id)
+                self.formatter.set_status(combat_node_id, RunStatus.RUNNING)
+                self.formatter.add_node('combat_detail', '正在跑圖', parent_id=combat_node_id)
+                self.formatter.set_status('combat_detail', RunStatus.RUNNING)
+                
             self.walk_until_f(time_out=4, backward_time=0, raise_if_not_found=True)
             self.pick_f()
+            
+            if hasattr(self, 'formatter') and self.formatter:
+                self.formatter.update_text('combat_detail', '戰鬥中')
+                
             self.combat_once()
             self.sleep(3)
+            
+            if hasattr(self, 'formatter') and self.formatter:
+                self.formatter.update_text('combat_detail', '前往領取獎勵')
+                
             self.walk_to_treasure()
             self.pick_f(handle_claim=False)
             can_continue, used = self.use_stamina(once=self.stamina_once, must_use=must_use)
             self.info_incr('used stamina', used)
             must_use -= used
             self.sleep(4)
+            
+            if hasattr(self, 'formatter') and self.formatter:
+                self.formatter.set_status('combat_detail', RunStatus.DONE)
+                self.formatter.set_status(combat_node_id, RunStatus.DONE)
+                
             if not can_continue:
                 self.log_info("used all stamina")
                 break

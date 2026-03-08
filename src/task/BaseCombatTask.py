@@ -244,6 +244,9 @@ class BaseCombatTask(CombatCheck):
             raise_if_not_found (bool, optional): 如果未找到战斗状态是否抛出异常。默认为 True。
         """
         self.wait_until(self.in_combat, time_out=wait_combat_time, raise_if_not_found=raise_if_not_found)
+        if hasattr(self, 'formatter') and self.formatter:
+            self.formatter.update_text('combat_detail', '戰鬥中')
+            
         self.load_chars()
         self.info['Combat Count'] = self.info.get('Combat Count', 0) + 1
         try:
@@ -266,6 +269,9 @@ class BaseCombatTask(CombatCheck):
         Returns:
             bool: 如果成功拾取到声骸则返回 True, 否则 False。
         """
+        if hasattr(self, 'formatter') and self.formatter:
+            self.formatter.update_text('combat_detail', '正在尋找/拾取聲骸')
+            
         directions = ['w', 'a', 's', 'd']
         step = 0.8
         duration = 0.8
@@ -292,6 +298,9 @@ class BaseCombatTask(CombatCheck):
             free_intro (bool, optional): 是否强制认为拥有入场技 (通常在协奏值满时)。默认为 False。
             target_low_con (bool, optional): 是否优先切换到协奏值较低的角色。默认为 False。
         """
+        if hasattr(self, 'formatter') and self.formatter:
+            self.formatter.update_text('combat_detail', '戰鬥中 (切換角色/施放技能)')
+            
         max_priority = Priority.MIN
         switch_to = current_char
         has_intro = free_intro

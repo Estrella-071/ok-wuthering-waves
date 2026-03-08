@@ -11,6 +11,7 @@ import cv2
 
 from src.Labels import Labels
 from src.scene.WWScene import WWScene
+from src.utils.ProgressFormatter import RunStatus
 
 logger = Logger.get_logger(__name__)
 number_re = re.compile(r'(\d+)')
@@ -35,6 +36,13 @@ class BaseWWTask(BaseTask):
         self.next_monthly_card_start = 0
         self._logged_in = False
         self.scene: WWScene | None = None
+        self.formatter = None
+
+    def next_frame(self):
+        super().next_frame()
+        if hasattr(self, 'formatter') and self.formatter is not None:
+            if self.formatter.update_spin():
+                self.info_set('current task', self.formatter.get_formatted_string())
 
     def is_open_world_auto_combat(self):
         from src.task.AutoCombatTask import AutoCombatTask
@@ -405,6 +413,9 @@ class BaseWWTask(BaseTask):
                 back_up = int(match.group(1))
         self.info_set('current_stamina', current)
         self.info_set('back_up_stamina', back_up)
+        if hasattr(self, 'formatter') and self.formatter:
+            self.formatter.update_text('info_stamina', f"結晶玻片 {current} / 240")
+            self.formatter.set_status('info_stamina', RunStatus.DONE)
         return current, back_up, current + back_up
 
     def use_stamina(self, once, must_use=0):

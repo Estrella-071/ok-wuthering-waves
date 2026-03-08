@@ -51,8 +51,17 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             must_use = 180 - used_stamina
         else:
             must_use = 0
+            
+        # 為了計算總戰鬥次數，估算所需次數（每次消耗60）
+        total_rounds = 1
+        if daily and must_use > 0:
+            total_rounds = math.ceil(must_use / self.stamina_once)
+            
+        from src.utils.ProgressFormatter import RunStatus
         self.info_incr('used stamina', 0)
+        round_count = 0
         while True:
+            round_count += 1
             self.sleep(1)
             gray_book_boss = self.openF2Book("gray_book_boss")
             self.click_box(gray_book_boss, after_sleep=1)
@@ -65,16 +74,35 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
 
             self.click_relative(0.18, 0.48, after_sleep=1)
             index = config.get('Which Tacet Suppression to Farm', 1) - 1
+            
+            if hasattr(self, 'formatter') and self.formatter and round_count == 1:
+                self.formatter.add_node('tp', '傳送至目標地點', parent_id='farm')
+                self.formatter.set_status('tp', RunStatus.RUNNING)
+                
             self.teleport_to_tacet(index)
             self.wait_click_travel()
             self.wait_in_team_and_world(time_out=120)
             self.sleep(2)
+            
+            if hasattr(self, 'formatter') and self.formatter and round_count == 1:
+                self.formatter.set_status('tp', RunStatus.DONE)
+                
+            combat_node_id = f'combat_{round_count}'
+            if hasattr(self, 'formatter') and self.formatter:
+                round_str = f"戰鬥 {round_count}/{total_rounds}" if daily else f"戰鬥 {round_count}"
+                self.formatter.add_node(combat_node_id, f"狀態: {round_str}", parent_id='farm')
+                self.formatter.set_status(combat_node_id, RunStatus.RUNNING)
+                self.formatter.add_node('combat_detail', '正在跑圖', parent_id=combat_node_id)
+                self.formatter.set_status('combat_detail', RunStatus.RUNNING)
+
             if self.door_walk_method.get(index) is not None:
                 for method in self.door_walk_method.get(index):
                     self.send_key_down(method[0])
                     self.sleep(method[1])
                     self.send_key_up(method[0])
                     self.sleep(0.05)
+                if hasattr(self, 'formatter') and self.formatter:
+                    self.formatter.update_text('combat_detail', '正在向目標移動')
                 in_combat = self.run_until(self.in_combat, 'w', time_out=10, running=True,
                                            target=False, post_walk=1)
                 if not in_combat:
@@ -82,14 +110,25 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             else:
                 self.walk_until_f(time_out=4, backward_time=0, raise_if_not_found=True)
                 self.pick_f(handle_claim=False)
+                
+            if hasattr(self, 'formatter') and self.formatter:
+                self.formatter.update_text('combat_detail', '戰鬥中')
             self.combat_once()
             self.sleep(3)
+            
+            if hasattr(self, 'formatter') and self.formatter:
+                self.formatter.update_text('combat_detail', '前往領取獎勵')
             self.walk_to_treasure()
             self.pick_f(handle_claim=False)
             can_continue, used = self.use_stamina(once=self.stamina_once, must_use=must_use)
             self.info_incr('used stamina', used)
             self.sleep(4)
             self.click(0.51, 0.84, after_sleep=3)
+            
+            if hasattr(self, 'formatter') and self.formatter:
+                self.formatter.set_status('combat_detail', RunStatus.DONE)
+                self.formatter.set_status(combat_node_id, RunStatus.DONE)
+                
             if not can_continue:
                 return self.not_enough_stamina()
             must_use -= used
