@@ -854,13 +854,12 @@ class BaseWWTask(BaseTask):
         return current_direction, current_adjust, False
 
     def in_team(self):
-        c1 = self.find_one('char_1_text',
-                           threshold=0.8)
-        c2 = self.find_one('char_2_text',
-                           threshold=0.8)
-        c3 = self.find_one('char_3_text',
-                           threshold=0.8)
+        threshold = 0.5
+        c1 = self.find_one('char_1_text', threshold=threshold)
+        c2 = self.find_one('char_2_text', threshold=threshold)
+        c3 = self.find_one('char_3_text', threshold=threshold)
         arr = [c1, c2, c3]
+        conf_str = f"conf: {[round(c.confidence, 3) if c else 0 for c in arr]}"
         # logger.debug(f'in_team check {arr}')
         current = -1
         exist_count = 0
@@ -874,7 +873,7 @@ class BaseWWTask(BaseTask):
             self._logged_in = True
             return True, current, exist_count + 1
         else:
-            self.log_info(f'in_team check failed: exist_count={exist_count}, arr={arr}')
+            self.log_info(f'in_team check failed: exist_count={exist_count}, {conf_str}')
             return False, -1, exist_count + 1
 
         # Function to check if a component forms a ring
