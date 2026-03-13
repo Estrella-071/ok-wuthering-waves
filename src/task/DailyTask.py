@@ -69,12 +69,15 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         # 1. 快照捕獲 (傳送前)
         self.open_daily(snapshot=True)
         
-        # 2. 執行深塔傳送 (過程中有黑屏載入)
-        # 傳入 book_opened=True，告知 go_to_tower 保持現有書本分頁切換
+        # 2. 啟動深塔傳送 (不等待加載完成)
         self.go_to_tower(book_opened=True)
         
-        # 3. 在載入或大世界轉場間隙，分析快照
+        # 3. 核心優化：在點擊傳送後的黑屏加載間隙，並行分析快照
         used_stamina, completed = self.analyze_daily_snapshot()
+        
+        # 4. 現在才等待傳送加載完成
+        self.wait_in_team_and_world(time_out=120)
+        self.wait_until(lambda: self.in_team()[0], time_out=5, settle_time=0.1)
 
         condition1 = self.config.get('Auto Farm all Nightmare Nest')
         condition2 = self.config.get('Farm Nightmare Nest for Daily Echo')
@@ -141,7 +144,8 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         )
 
         self.wait_click_travel()
-        self.sleep(0.2)
+        # 移除了 analyze_daily_snapshot 的直接調用，改由 run() 在加載期間控制
+        self.sleep(0.1)
         self.wait_in_team_and_world(time_out=120)
         self.wait_until(lambda: self.in_team()[0], time_out=5, settle_time=0.1)
 
