@@ -79,6 +79,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         
         # 4. 現在才等待傳送加載完成
         self.wait_in_team_and_world(time_out=120)
+        self.log_info(self.tr('Arrived at Tower of Adversity'))
         self.wait_until(lambda: self.in_team()[0], time_out=5, settle_time=0.1)
 
         condition1 = self.config.get('Auto Farm all Nightmare Nest')
@@ -195,7 +196,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             
             # 3. 切換至「周期挑戰」分頁並捕獲第三張：體力數據
             # 座標 0.04, 0.28 是側邊欄第二個按鈕區域
-            self.click_relative(0.04, 0.28, after_sleep=0.15) # 增加等待時間確保內容加載
+            self.click_relative(0.04, 0.28, after_sleep=0.2) # 增加等待時間至 0.2s 應對分頁動畫位移
             self._stamina_snapshot = self.frame.copy()
             return 
             
@@ -231,10 +232,13 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             self.log_warning('Missing snapshots, falling back to synchronous reading')
             return self.open_daily()
             
-        self.info_set('current task', self.tr('Analyzing snapshots in background...'))
+        msg = self.tr('Analyzing snapshots in background...')
+        self.info_set('current task', msg)
+        self.log_info(msg) # 補全 log_info 以更新 UI 日誌窗格
         
         # 1. 體力分析 (使用第三張分頁截圖)
         current_stamina, backup_stamina, _ = self.get_stamina(frame=self._stamina_snapshot)
+        self.log_info(f"{self.tr('Waveplate (Current)')}: {current_stamina}, {self.tr('Waveplate Crystal (Backup)')}: {backup_stamina}")
         
         # 2. 活躍度進度分析 (已消耗體力)
         progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'), frame=self._daily_snapshot1)
@@ -256,7 +260,9 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.info_set(self.tr('Waveplate (Current)'), current_stamina)
         self.info_set(self.tr('Waveplate Crystal (Backup)'), backup_stamina)
         
-        self.info_set('current task', self.tr('Analysis completed'))
+        msg_done = self.tr('Analysis completed')
+        self.info_set('current task', msg_done)
+        self.log_info(msg_done)
         
         # 清理截圖
         del self._daily_snapshot1
