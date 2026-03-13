@@ -130,6 +130,8 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.info_set('current task', self.tr('Teleporting to Tower of Adversity'))
         if not book_opened:
             self.ensure_main(time_out=80)
+        
+        # 使用視覺偵測確保標籤頁正確切換，不再猜測時間
         gray_book_weekly = self.openF2Book(Labels.gray_book_weekly, opened=book_opened)
         if not gray_book_weekly:
             self.log_error(self.tr('go_to_tower can not find gray_book_weekly'))
@@ -145,18 +147,18 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             return
         btn = min(btns, key=lambda box: box.y)
         
-        self.info_set('current task', self.tr('Clicking proceed and Waiting for teleport...'))
+        self.info_set('current task', self.tr('Confirming teleport...'))
         self.wait_until(
             lambda: not self.find_one(Labels.boss_proceed, box=self.box_of_screen(0.94, 0.3, 0.97, 0.41)),
             pre_action=lambda: self.click_proceed_with_stamina(btn),
             time_out=5, settle_time=0.1
         )
         
-        self.info_set('current task', self.tr('Waiting for travel button...'))
+        self.info_set('current task', self.tr('Waiting for loading screen...'))
         self.wait_click_travel()
         
         if wait:
-            self.sleep(0.2)
+            self.sleep(0.3)
             self.wait_in_team_and_world(time_out=120)
             self.wait_until(lambda: self.in_team()[0], time_out=5, settle_time=0.1)
 
@@ -188,18 +190,33 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             return
             
         if snapshot:
-            # 極速三連拍模式：利用 UI 響應間隙快速獲取所有數據截圖
-            # 1. 第一張：活躍度前半部分
+            # 極速三連拍：完全基於視覺偵測，不再臆測等待時間
+            # 1. 第一張：活躍度前半
             self._daily_snapshot1 = self.frame.copy()
             
-            # 2. 模擬滾動並捕獲第二張：活躍度後半部分
-            self.click(0.961, 0.6, after_sleep=0.15) 
+            # 2. 模擬捲動並快速領取第二張（捲動屬機械動畫，給予短暫 0.15s 緩衝）
+            self.click(0.961, 0.6) 
+            self.sleep(0.15)
             self._daily_snapshot2 = self.frame.copy()
             
-            # 3. 切換至「周期挑戰」分頁並捕獲第三張：體力數據
-            # 增加等待時間以確保介面加載完成，座標 0.04, 0.28 點擊「周期挑戰」
-            self.click_relative(0.04, 0.28, after_sleep=0.25)
+            # 3. 切換至「虛像入界」(Dungeon) 採集體力
+            # Y=0.54 左右通常為第四個分頁，點擊後等待「前往」按鈕出現
+            self.info_set('current task', self.tr('Switching to Dungeon tab for stamina...'))
+            self.wait_until(
+                lambda: self.find_one(Labels.boss_proceed, box=self.box_of_screen(0.94, 0.3, 0.97, 0.41)),
+                pre_action=lambda: self.click_relative(0.04, 0.54, after_sleep=0.3),
+                time_out=5, settle_time=0.1
+            )
             self._stamina_snapshot = self.frame.copy()
+            
+            # 4. 預先切換至「周期挑戰」(Tower/Weekly) 以便後續 go_to_tower
+            # Y=0.67 左右通常為第五個分頁
+            self.info_set('current task', self.tr('Switching to Weekly tab for teleport...'))
+            self.wait_until(
+                lambda: self.find_one(Labels.gray_book_weekly),
+                pre_action=lambda: self.click_relative(0.04, 0.67, after_sleep=0.3),
+                time_out=5, settle_time=0.1
+            )
             return 
             
         # 脈衝點擊分頁直到 OCR 偵測到數字（取代 after_sleep=1.5 硬編碼）
@@ -236,15 +253,8 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             
         self.info_set('current task', self.tr('Analyzing snapshots in background...'))
         
-        # 1. 體力分析 (優先使用第三張截圖，若失敗則從活躍度截圖回退)
-        # 體力區域在書本介面是全域性的，通常在所有分頁都可見
+        # 1. 體力分析 (僅從第三張副本截圖讀取，活躍度頁面無體力資訊)
         current_stamina, backup_stamina, _ = self.get_stamina(frame=self._stamina_snapshot)
-        if current_stamina == -1:
-            self.log_debug('Stamina OCR failed on snapshot 3, trying snapshot 1')
-            current_stamina, backup_stamina, _ = self.get_stamina(frame=self._daily_snapshot1)
-        if current_stamina == -1:
-            self.log_debug('Stamina OCR failed on snapshot 1, trying snapshot 2')
-            current_stamina, backup_stamina, _ = self.get_stamina(frame=self._daily_snapshot2)
         
         # 2. 活躍度進度分析 (已消耗體力)
         progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'), frame=self._daily_snapshot1)
