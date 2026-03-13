@@ -140,6 +140,10 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             return
         
         # 點擊副本項
+<<<<<<< HEAD
+=======
+        self.info_set_task('Selecting Weekly/Tower Tab', is_major=True)
+>>>>>>> f56624bdde0d2619a3aa7626d483acbd3d3e0201
         self.click_box(gray_book_weekly, after_sleep=1)
         
         # 點擊前往
@@ -249,6 +253,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         if not points_boxes:
             points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re, frame=self._daily_snapshot2)
             
+<<<<<<< HEAD
         points = int(points_boxes[0].name) if points_boxes else 0
         self.info_set('Activity Pts', points)
         
@@ -259,6 +264,16 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.info_set('current task', self.tr('Analysis completed'))
         
         # 清理截圖
+=======
+        if points_boxes:
+            points = int(points_boxes[0].name)
+            if points > 0:
+                self.info_set(self.tr('Activity Pts'), points)
+        else:
+            points = 0
+            
+        # 清理截圖釋放內存
+>>>>>>> f56624bdde0d2619a3aa7626d483acbd3d3e0201
         del self._daily_snapshot1
         del self._daily_snapshot2
         if hasattr(self, '_stamina_snapshot'):

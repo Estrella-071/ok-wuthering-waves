@@ -396,6 +396,7 @@ class BaseWWTask(BaseTask):
         else:
             return True
 
+
     def get_stamina(self, frame=None):
         if frame is None:
             boxes = self.wait_ocr(0.44, 0.0, 0.9, 0.10, raise_if_not_found=False,
@@ -976,6 +977,9 @@ class BaseWWTask(BaseTask):
 
     def wait_click_travel(self):
         self.wait_until(self.click_traval_button, raise_if_not_found=True, time_out=10)
+        # 點擊傳送後，於黑色加載期間並行分析體力數據
+        if hasattr(self, '_stamina_snapshot') and self._stamina_snapshot is not None:
+            self.get_stamina(frame=self._stamina_snapshot)
 
     def wait_book(self, feature="gray_book_all_monsters", time_out=3):
         gray_book_boss = self.wait_until(
