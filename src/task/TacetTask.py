@@ -53,22 +53,38 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             must_use = 0
         self.info_incr('used stamina', 0)
         while True:
-            self.sleep(1)
-            gray_book_boss = self.openF2Book("gray_book_boss")
-            self.click_box(gray_book_boss, after_sleep=1)
+            gray_book_boss = self.openF2Book("gray_book_boss", opened=daily)
+            
+            # 智慧切換分頁：脈衝點擊直至體力數據加載
+            self.wait_until(
+                lambda: self.get_stamina()[0] != -1,
+                pre_action=lambda: self.click_box(gray_book_boss, after_sleep=0.1),
+                time_out=5, settle_time=0.1
+            )
             current, back_up, total = self.get_stamina()
             if current == -1:
-                self.click_relative(0.04, 0.4, after_sleep=1)
+                # 嘗試點擊分頁圖標補救
+                self.wait_until(
+                    lambda: self.get_stamina()[0] != -1,
+                    pre_action=lambda: self.click_relative(0.04, 0.4, after_sleep=0.1),
+                    time_out=3, settle_time=0.1
+                )
                 current, back_up, total = self.get_stamina()
             if total < self.stamina_once:
                 return self.not_enough_stamina()
 
-            self.click_relative(0.18, 0.48, after_sleep=1)
             index = config.get('Which Tacet Suppression to Farm', 1) - 1
+            # 智慧選擇分頁：脈衝點擊左側圖標直到數據刷新
+            self.wait_until(
+                lambda: self.get_stamina()[0] != -1, # 這裡以體力條出現為分頁加載標誌
+                pre_action=lambda: self.click_relative(0.18, 0.48, after_sleep=0.1),
+                time_out=5, settle_time=0.1
+            )
+            # 確定分頁後，僅執行一次目標點擊
+            self.click_on_book_target(index + 1, self.total_number)
             self.teleport_to_tacet(index)
             self.wait_click_travel()
             self.wait_in_team_and_world(time_out=120)
-            self.sleep(2)
             if self.door_walk_method.get(index) is not None:
                 for method in self.door_walk_method.get(index):
                     self.send_key_down(method[0])

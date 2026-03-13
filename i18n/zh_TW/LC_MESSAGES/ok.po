@@ -607,10 +607,37 @@ msgid "Need mankind help"
 msgstr "自動肉鴿失敗，需要手動操作至下一節點！"
 
 msgid "current task"
-msgstr ""
+msgstr "目前任務"
+
+msgid "Consumed Waveplate"
+msgstr "已消耗結晶玻片"
+
+msgid "Activity Pts"
+msgstr "活躍度"
+
+msgid "Claimed Activity Pts"
+msgstr "領取後活躍度"
+
+msgid "Waveplate (Current)"
+msgstr "結晶波片 (目前)"
+
+msgid "Waveplate Crystal (Backup)"
+msgstr "結晶單質 (備用)"
+
+msgid "Waveplate"
+msgstr "結晶波片"
 
 msgid "in main"
 msgstr ""
+
+msgid "Tower of Adversity"
+msgstr "逆境深塔"
+
+msgid "Teleport to Tower of Adversity"
+msgstr "傳送到逆境深塔"
+
+msgid "Attempting to open the book via Mouse Click (Alt)"
+msgstr "嘗試通過點擊鼠標 (Alt) 打開指南"
 
 msgid "wait main"
 msgstr ""
@@ -731,3 +758,17 @@ msgstr "夢魘拔除"
 
 msgid "Tacet Discord Nest"
 msgstr "殘像聚落"
+msgid "Waveplate Crystal (Backup)"
+msgstr "結晶單質 (備用)"
+
+msgid "Waveplate (Current)"
+msgstr "結晶玻片 (當前)"
+
+msgid "Consumed Waveplate"
+msgstr "已消耗結晶玻片"
+
+msgid "Activity Pts"
+msgstr "活躍度點數"
+
+msgid "Analyzing daily snapshots in background..."
+msgstr "正在背景分析每日任務快照..."

@@ -37,13 +37,12 @@ class ForgeryTask(DomainTask):
             must_use = 0
         if config is None:
             config = self.config
-        current, back_up, total = self.open_F2_book_and_get_stamina()
+        current, back_up, total = self.open_F2_book_and_get_stamina(opened=daily)
         if total < self.stamina_once or total < must_use or (must_use == 0 and current < self.stamina_once):
             self.log_info(f'not enough stamina', notify=True)
             self.back()
             return
         self.teleport_into_domain(config.get('Which Forgery Challenge to Farm', 1), daily)
-        self.sleep(1)
         self.farm_in_domain(must_use=must_use)
 
     def purification_material(self):
@@ -61,21 +60,26 @@ class ForgeryTask(DomainTask):
         self.ensure_main()
 
     def teleport_into_domain(self, serial_number, daily=False):
-        self.click_relative(0.18, 0.16, after_sleep=1)
+        # 智慧切換分頁：脈衝點擊直到分頁數據加載完成 (由體力值檢測觸發)
+        self.wait_until(
+            lambda: self.get_stamina()[0] != -1,
+            pre_action=lambda: self.click_relative(0.18, 0.16, after_sleep=0.1),
+            time_out=5, settle_time=0.1, raise_if_not_found=False
+        )
+        # 確定分頁就位後，單次執行目標點擊
+        self.click_on_book_target(serial_number, self.total_number)
         self.info_set('Teleport to Forgery Challenge', serial_number - 1)
         if serial_number > self.total_number:
             raise IndexError(f'Index out of range, max is {self.total_number}')
-        self.click_on_book_target(serial_number, self.total_number)
         # if daily:
         #     self.get_material_mat()
         self.wait_click_travel()
         self.wait_in_team_and_world(time_out=self.teleport_timeout)
-        self.sleep(1)
         self.walk_until_f(time_out=2)
         self.pick_f()
         self.wait_click_feature('gray_button_challenge', relative_x=4, raise_if_not_found=True,
-                                click_after_delay=1, threshold=0.6, after_sleep=1, time_out=20)
-        self.click_relative(0.93, 0.90, after_sleep=1)
+                                click_after_delay=0.1, threshold=0.6, after_sleep=0.1, time_out=20)
+        self.click_relative(0.93, 0.90, after_sleep=0.1)
         self.wait_in_team_and_world(time_out=self.teleport_timeout)
 
     def get_material_mat(self):

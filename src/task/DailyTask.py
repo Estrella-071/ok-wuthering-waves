@@ -53,10 +53,28 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         }
         self.description = "Login, claim monthly card, farm echo, and claim daily reward"
 
+    def pause(self):
+        """
+        防護暫停崩潰 Bug：當 executor.current_task 為 None 時點擊暫停會引發 Exception。
+        此處強制校對狀態以確保暫停成功執行。
+        """
+        if self.executor.current_task is None:
+            self.executor.current_task = self
+        super().pause()
+
     def run(self):
         WWOneTimeTask.run(self)
         self.ensure_main(time_out=180)
-        self.go_to_tower()
+        
+        # 1. 快照捕獲 (傳送前)
+        self.open_daily(snapshot=True)
+        
+        # 2. 執行深塔傳送 (過程中有黑屏載入)
+        # 傳入 book_opened=True，告知 go_to_tower 保持現有書本分頁切換
+        self.go_to_tower(book_opened=True)
+        
+        # 3. 在載入或大世界轉場間隙，分析快照
+        used_stamina, completed = self.analyze_daily_snapshot()
 
         condition1 = self.config.get('Auto Farm all Nightmare Nest')
         condition2 = self.config.get('Farm Nightmare Nest for Daily Echo')
@@ -73,9 +91,8 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             except Exception as e:
                 self.log_error("NightmareNestTask Failed", e)
                 self.ensure_main(time_out=180)
-        used_stamina, completed = self.open_daily()
+        # used_stamina, completed = self.open_daily() # 已在 analyze_daily_snapshot 完成
 
-        self.send_key('esc', after_sleep=1)
         if not completed:
             if used_stamina < 180:
                 target = self.config.get('Which to Farm', self.support_tasks[0])
@@ -88,63 +105,149 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
                 else:
                     self.get_task_by_class(SimulationTask).farm_simulation(daily=True, used_stamina=used_stamina,
                                                                            config=self.config)
-                self.sleep(4)
+                self.ensure_main()
+                self.sleep(1)
             self.claim_daily()
 
+        # 任務完成後，或判定已全領取：此時才關閉書本回到大世界
+        self.back(after_sleep=0.1)
+        self.wait_until(lambda: self.in_team_and_world(), time_out=5, settle_time=0.1)
+
         self.claim_mail()
-        self.sleep(1)
         self.claim_battle_pass()
         self.log_info('Task completed', notify=True)
 
-    def go_to_tower(self):
-        self.log_info('go to tower')
-        self.ensure_main(time_out=80)
-        gray_book_weekly = self.openF2Book(Labels.gray_book_weekly)
+    def go_to_tower(self, book_opened=False):
+        self.log_info(self.tr('Teleport to Tower of Adversity'))
+        if not book_opened:
+            self.ensure_main(time_out=80)
+        gray_book_weekly = self.openF2Book(Labels.gray_book_weekly, opened=book_opened)
         if not gray_book_weekly:
-            self.log_error('go_to_tower can not find gray_book_weekly')
+            self.log_error(self.tr('go_to_tower can not find gray_book_weekly'))
             return
-        self.click_box(gray_book_weekly, after_sleep=1)
-        btn = self.find_one(Labels.boss_proceed, box=self.box_of_screen(0.94, 0.3, 0.97, 0.41), threshold=0.8)
+        btn = self.wait_until(
+            lambda: self.find_one(Labels.boss_proceed, box=self.box_of_screen(0.94, 0.3, 0.97, 0.41), threshold=0.8),
+            pre_action=lambda: self.click_box(gray_book_weekly, after_sleep=0.3),
+            time_out=6, settle_time=0.1
+        )
         if btn is None:
             self.ensure_main(time_out=10)
             return
-        self.click_box(btn, after_sleep=1)
+
+        self.wait_until(
+            lambda: not self.find_one(Labels.boss_proceed, box=self.box_of_screen(0.94, 0.3, 0.97, 0.41)),
+            pre_action=lambda: self.click_proceed_with_stamina(btn),
+            time_out=5, settle_time=0.1
+        )
+
         self.wait_click_travel()
+        self.sleep(0.2)
         self.wait_in_team_and_world(time_out=120)
-        self.sleep(1)
+        self.wait_until(lambda: self.in_team()[0], time_out=5, settle_time=0.1)
 
     def claim_battle_pass(self):
         self.log_info('battle pass')
         self.send_key_down('alt')
+        self.sleep(0.1)
+        self.click_relative(0.86, 0.05, down_time=0.05)
         self.sleep(0.05)
-        self.click_relative(0.86, 0.05)
         self.send_key_up('alt')
-        if not self.wait_ocr(0.2, 0.13, 0.32, 0.22, match=re.compile(r'\d+'), settle_time=1, raise_if_not_found=False):
+        if not self.wait_ocr(0.12, 0.13, 0.35, 0.25, match=re.compile(r'\d+'), settle_time=0.1, time_out=6, raise_if_not_found=False):
             self.log_error('can not battle pass, maybe ended')
         else:
-            self.click(0.04, 0.3, after_sleep=1)
-            self.click(0.68, 0.91, after_sleep=3)
-            self.click(0.04, 0.17, after_sleep=2)
-            self.click(0.68, 0.91, after_sleep=2)
-            self.wait_ocr(0.2, 0.13, 0.32, 0.22, match=re.compile(r'\d+'),
-                          post_action=lambda: self.click(0.68, 0.91, after_sleep=1), settle_time=1,
+            self.click(0.04, 0.3, after_sleep=0.1)
+            self.wait_ocr(0.1, 0.1, 0.4, 0.3, match=re.compile(r'\d+'),
+                          post_action=lambda: self.click(0.68, 0.91, after_sleep=0.1), settle_time=0.1, time_out=3,
+                          raise_if_not_found=False)
+            self.click(0.04, 0.17, after_sleep=0.1)
+            self.wait_ocr(0.1, 0.1, 0.4, 0.3, match=re.compile(r'\d+'),
+                          post_action=lambda: self.click(0.68, 0.91, after_sleep=0.1), settle_time=0.1, time_out=3,
                           raise_if_not_found=False)
         self.ensure_main()
 
-    def open_daily(self):
+    def open_daily(self, snapshot=False):
         self.log_info('open_daily')
         gray_book_quest = self.openF2Book("gray_book_quest")
-        self.click_box(gray_book_quest, after_sleep=1.5)
-        progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'^(\d+)/180$'))
+        
+        if snapshot:
+            # 確保分頁載入
+            self.wait_until(
+                lambda: self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'\d+')),
+                pre_action=lambda: self.click_box(gray_book_quest, after_sleep=0.3),
+                time_out=5, settle_time=0.2, raise_if_not_found=False
+            )
+            # 捕獲第一張快照
+            self._daily_snapshot1 = self.frame.copy()
+            
+            # 捲動翻頁捕捉第二張 (用戶要求：點擊卷軸)
+            self.click(0.961, 0.6, after_sleep=0.3)
+            self.sleep(0.5)
+            self._daily_snapshot2 = self.frame.copy()
+            return
+        
+            
+        # 脈衝點擊分頁直到 OCR 偵測到數字（取代 after_sleep=1.5 硬編碼）
+        self.wait_until(
+            lambda: self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'\d+')),
+            pre_action=lambda: self.click_box(gray_book_quest, after_sleep=0.3),
+            time_out=5, settle_time=0.2, raise_if_not_found=False
+        )
+        # 嘗試匹配完整的體力進度格式
+        progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'))
         if not progress:
-            self.click(0.961, 0.6, after_sleep=1)
-            progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'^(\d+)/180$'))
+            # 捲動翻頁，用 wait_until 取代 after_sleep=1 硬編碼
+            self.wait_until(
+                lambda: self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180')),
+                pre_action=lambda: self.click(0.961, 0.6, after_sleep=0.3),
+                time_out=5, settle_time=0.2, raise_if_not_found=False
+            )
+            progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'))
         if progress:
             current = int(progress[0].name.split('/')[0])
         else:
             current = 0
-        self.info_set('current daily progress', current)
+        self.get_stamina() # 同步讀取體力數據到看板
+        self.info_set('Consumed Waveplate', current)
         return current, self.get_total_daily_points() >= 100
+
+    def analyze_daily_snapshot(self):
+        """
+        分析由 open_daily(snapshot=True) 留下的截圖
+        """
+        if not hasattr(self, '_daily_snapshot1') or not hasattr(self, '_daily_snapshot2'):
+            self.log_warning('No daily snapshots found, falling back to synchronous reading')
+            return self.open_daily()
+            
+        self.log_info(self.tr('Analyzing daily snapshots in background...'))
+        
+        # 從第一張圖嘗試讀取
+        progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'), frame=self._daily_snapshot1)
+        if not progress:
+            # 第一張圖沒讀到，從第二張圖讀取
+            progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'), frame=self._daily_snapshot2)
+            
+        if progress:
+            current = int(progress[0].name.split('/')[0])
+        else:
+            current = 0
+            
+        # 體力也是異步讀取 (使用第一張截圖即可，因為同一介面)
+        self.get_stamina(frame=self._daily_snapshot1)
+        self.info_set(self.tr('Consumed Waveplate'), current)
+        
+        # 讀取活躍度點數 (通常在第一或第二頁都有進度條)
+        points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re, frame=self._daily_snapshot1)
+        if not points_boxes:
+            points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re, frame=self._daily_snapshot2)
+            
+        points = int(points_boxes[0].name) if points_boxes else 0
+        self.info_set(self.tr('Activity Pts'), points)
+        
+        # 清理截圖釋放內存
+        del self._daily_snapshot1
+        del self._daily_snapshot2
+        
+        return current, points >= 100
 
     def get_total_daily_points(self):
         points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re)
@@ -152,28 +255,29 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             points = int(points_boxes[0].name)
         else:
             points = 0
-        self.info_set('total daily points', points)
+        self.info_set('Activity Pts', points)
         return points
 
     def claim_daily(self):
-        self.info_set('current task', 'claim daily')
+        self.info_set('Current Task', 'claim daily')
         self.ensure_main(time_out=5)
         self.open_daily()
 
+        # 回歸上游邏輯：單次點擊領取全部，不重試（避免連點跳轉）
         self.click(0.87, 0.17, after_sleep=0.5)
         self.sleep(1)
 
         total_points = self.get_total_daily_points()
-        self.info_set('daily points', total_points)
+        self.info_set('Claimed Activity Pts', total_points)
         if total_points < 100:
             raise Exception("Can't complete daily task, may need to increase stamina manually!")
 
-        self.click(0.89, 0.85, after_sleep=1)
+        self.click(0.89, 0.85, after_sleep=0.5)
         self.ensure_main(time_out=10)
 
     def claim_mail(self):
         self.info_set('current task', 'claim mail')
-        self.back(after_sleep=1.5)
+        self.ensure_main(time_out=5) # 確保在選單中，會執行 Esc 動作
         self.click(0.64, 0.95, after_sleep=1)
         self.click(0.14, 0.9, after_sleep=1)
         self.ensure_main(time_out=10)

@@ -36,6 +36,10 @@ class BaseWWTask(BaseTask):
         self._logged_in = False
         self.scene: WWScene | None = None
 
+    @property
+    def app(self):
+        return og.app
+
     def is_open_world_auto_combat(self):
         from src.task.AutoCombatTask import AutoCombatTask
         from src.task.TacetTask import TacetTask
@@ -328,15 +332,17 @@ class BaseWWTask(BaseTask):
     def find_treasure_icon(self):
         return self.find_one('treasure_icon', box=self.box_of_screen(0.18, 0.1, 0.82, 0.81), threshold=0.7)
 
-    def click(self, x=-1, y=-1, move_back=False, name=None, interval=-1, move=True, down_time=0.01, after_sleep=0,
+    def click(self, x=-1, y=-1, move_back=False, name=None, interval=-1, move=True, down_time=None, after_sleep=0,
               key="left"):
         if x == -1 and y == -1:
             x = self.width_of_screen(0.5)
             y = self.height_of_screen(0.5)
             move = False
-            down_time = 0.01
+            if down_time is None:
+                down_time = 0.01
         else:
-            down_time = 0.2
+            if down_time is None:
+                down_time = 0.2
         return super().click(x, y, move_back, name, interval, move=move, down_time=down_time, after_sleep=after_sleep,
                              key=key)
 
@@ -390,11 +396,16 @@ class BaseWWTask(BaseTask):
         else:
             return True
 
-    def get_stamina(self):
-        boxes = self.wait_ocr(0.49, 0.0, 0.92, 0.10, raise_if_not_found=False,
-                              match=[number_re, stamina_re], log=self.debug)
+    def get_stamina(self, frame=None):
+        if frame is None:
+            boxes = self.wait_ocr(0.49, 0.0, 0.92, 0.10, raise_if_not_found=False,
+                                  match=[number_re, stamina_re], log=self.debug)
+        else:
+            boxes = self.ocr(0.49, 0.0, 0.92, 0.10, frame=frame, match=[number_re, stamina_re])
+            
         if not boxes:
-            self.screenshot('stamina_error')
+            if frame is None:
+                self.screenshot('stamina_error')
             return -1, -1, -1
         current = 0
         back_up = 0
@@ -403,8 +414,8 @@ class BaseWWTask(BaseTask):
                 current = int(match.group(1))
             elif match := number_re.search(box.name):
                 back_up = int(match.group(1))
-        self.info_set('current_stamina', current)
-        self.info_set('back_up_stamina', back_up)
+        self.info_set(self.tr('Waveplate (Current)'), current)
+        self.info_set(self.tr('Waveplate Crystal (Backup)'), back_up)
         return current, back_up, current + back_up
 
     def use_stamina(self, once, must_use=0):
@@ -880,17 +891,16 @@ class BaseWWTask(BaseTask):
 
     def handle_monthly_card(self):
         monthly_card = self.find_one('monthly_card', threshold=0.8)
-        # self.screenshot('monthly_card1')
         if monthly_card is not None:
-            # self.screenshot('monthly_card1')
-            self.click_relative(0.50, 0.89)
-            self.sleep(2)
-            # self.screenshot('monthly_card2')
-            self.click_relative(0.50, 0.89)
-            self.sleep(2)
-            self.wait_until(self.in_team_and_world, time_out=10,
-                            post_action=lambda: self.click_relative(0.50, 0.89, after_sleep=1))
-            # self.screenshot('monthly_card3')
+            # 領取點擊一：直到點擊生效（介面狀態變更）
+            self.wait_until(lambda: not self.find_one('monthly_card', threshold=0.8),
+                            pre_action=lambda: self.click_relative(0.50, 0.89, after_sleep=0.1),
+                            time_out=5, settle_time=0.1, raise_if_not_found=False)
+            
+            # 領取點擊二：確認領取結果，直到回到主介面
+            self.wait_until(self.in_team_and_world,
+                            pre_action=lambda: self.click_relative(0.50, 0.89, after_sleep=0.1),
+                            time_out=10, settle_time=0.1)
             self.set_check_monthly_card(next_day=True)
         logger.debug(f'check_monthly_card {monthly_card}')
         return monthly_card is not None
@@ -912,48 +922,53 @@ class BaseWWTask(BaseTask):
         self.send_key_up('alt')
         self.sleep(0.5)
 
+    def _open_book_mouse(self, feature):
+        self.send_key_down('alt')
+        self.sleep(0.1)
+        self.click_relative(0.77, 0.05, down_time=0.05)
+        self.sleep(0.05)
+        self.send_key_up('alt')
+        # 這裡不使用 wait_book 以免過深遞迴，直接用 find_one 快速檢查
+        return bool(self.find_one(feature, box='box_gray_book', threshold=0.7))
+
     def openF2Book(self, feature="gray_book_all_monsters", opened=False):
         if not opened:
-            self.log_info('click f2 to open the book')
             if self.in_team_and_world():
-                self.log_info('send mouse key to open the book')
-                self.send_key_down('alt')
-                self.sleep(0.05)
-                self.click_relative(0.77, 0.05)
-                self.sleep(0.02)
-                self.send_key_up('alt')
-                self.sleep(3)
-            if self.in_team_and_world():
-                self.send_key('f2', after_sleep=3)
-                self.log_info('send f2 key to open the book failed, use f2')
-
-        gray_book_boss = self.wait_book(feature)
-        self.sleep(0.8)
+                self.log_info(self.tr('Attempting to open the book via Mouse Click (Alt)'))
+                # 智慧重試：持續 Alt+Click 直到看到書本介面，最高耗時 2s，但成功即瞬發返回
+                if not self.wait_until(lambda: self._open_book_mouse(feature), time_out=2.5, raise_if_not_found=False):
+                    self.log_info(self.tr('Mouse click failed after retries, using F2 fallback'))
+                    self.send_key('f2')
+        
+        # 最終智慧等待介面特徵出現，time_out 設為 3s 確保穩定，但 settle_time=0.1 實現秒回
+        gray_book_boss = self.wait_book(feature, time_out=3)
         if not gray_book_boss:
-            self.log_error("can't find gray_book_boss, make sure f2 is the hotkey for book", notify=True)
-            raise Exception("can't find gray_book_boss, make sure f2 is the hotkey for book")
+            msg = self.tr("can't find gray_book_boss, make sure f2 is the hotkey for book")
+            self.log_error(msg, notify=True)
+            raise Exception(msg)
         return gray_book_boss
 
     def click_traval_button(self):
-        for feature_name in ['fast_travel_custom', 'gray_teleport', 'remove_custom']:
-            if self.find_one(feature_name, threshold=0.7):
-                self.sleep(0.5)
-                feature = self.find_one(feature_name, threshold=0.7)
-                self.click(feature, after_sleep=1)
-                if feature.name == 'fast_travel_custom':
-                    if confirm := self.wait_feature(
-                            ['confirm_btn_hcenter_vcenter', 'confirm_btn_highlight_hcenter_vcenter'],
-                            raise_if_not_found=False,
-                            threshold=0.6,
-                            time_out=2):
-                        self.click(0.49, 0.55, after_sleep=0.5)  # 点击不再提醒
-                        self.click(confirm, after_sleep=0.5)
-                        self.wait_click_feature(
-                            ['confirm_btn_hcenter_vcenter', 'confirm_btn_highlight_hcenter_vcenter'],
-                            relative_x=-1, raise_if_not_found=False,
-                            threshold=0.6,
-                            time_out=1)
-                return True
+        feature = self.wait_feature(['fast_travel_custom', 'gray_teleport', 'remove_custom'], 
+                                   threshold=0.7, time_out=0.5, 
+                                   settle_time=0.1, raise_if_not_found=False)
+        if feature:
+            self.click(feature, after_sleep=0.1)
+            # 驗證點擊是否生效：是否有確認彈窗出現，或者傳送按鈕是否消失（代表進入黑屏或 UI 切換）
+            if feature.name == 'fast_travel_custom':
+                if self.wait_feature(['confirm_btn_hcenter_vcenter', 'confirm_btn_highlight_hcenter_vcenter'],
+                                   time_out=0.8, raise_if_not_found=False):
+                    logger.info("Fast travel custom confirmation detected")
+                    # 處理彈窗
+                    self.click(0.49, 0.55, after_sleep=0.1)  # 点击不再提醒
+                    self.click(0.7, 0.71, after_sleep=0.4) # 確認按鈕座標（通常穩定）
+                    return True
+            else:
+                # 普通傳送：按鈕應消失或介面變更
+                if self.wait_until(lambda: not self.find_one(feature.name, threshold=0.7), time_out=1.0, raise_if_not_found=False):
+                    logger.info(f"Teleport button {feature.name} processed successfully")
+                    return True
+        return False
 
     def wait_click_travel(self):
         self.wait_until(self.click_traval_button, raise_if_not_found=True, time_out=10)
@@ -961,8 +976,8 @@ class BaseWWTask(BaseTask):
     def wait_book(self, feature="gray_book_all_monsters", time_out=3):
         gray_book_boss = self.wait_until(
             lambda: self.find_one(feature, box='box_gray_book',
-                                  threshold=0.3),
-            time_out=time_out, settle_time=1)
+                                  threshold=0.65),
+            time_out=time_out, settle_time=0.1)
         logger.info(f'found gray_book_boss {gray_book_boss}')
         # if self.debug:
         #     self.screenshot(feature)
@@ -971,10 +986,10 @@ class BaseWWTask(BaseTask):
     def check_main(self):
         if not self.in_team()[0]:
             self.click_relative(0, 0)
-            self.send_key('esc')
-            self.sleep(1)
-            if not self.in_team()[0]:
-                raise Exception('must be in game world and in teams')
+            # 智慧退出介面：點擊 ESC 直到回歸團隊狀態
+            self.wait_until(lambda: self.in_team()[0],
+                            pre_action=lambda: self.send_key('esc', after_sleep=0.1),
+                            time_out=5, settle_time=0.1)
         return True
 
     def click_on_book_target(self, serial_number: int, total_number: int):
@@ -989,7 +1004,7 @@ class BaseWWTask(BaseTask):
             y = 0.28
             height = (0.85 - 0.28) / 4
             y += height * index
-            self.click_relative(x, y, after_sleep=1)
+            self.click_relative(x, y, after_sleep=0.1)
         else:
             min_width = self.width_of_screen(475 / 2560)
             min_height = self.height_of_screen(40 / 1440)
@@ -1004,11 +1019,18 @@ class BaseWWTask(BaseTask):
             self.click_relative(0.98, y)
             logger.info(f'scroll to target')
             btns = self.find_feature('boss_proceed', box=self.box_of_screen(0.94, 0.6, 0.97, 0.88), threshold=0.8)
-            if btns is None:
-                raise Exception("can't find boss_proceed")
             bottom_btn = max(btns, key=lambda box: box.y)
-            self.click_box(bottom_btn, after_sleep=1)
-        self.wait_feature(['fast_travel_custom', 'gray_teleport', 'remove_custom'], time_out=10, settle_time=0.5)
+            self.click_proceed_with_stamina(bottom_btn)
+            
+        self.wait_feature(['fast_travel_custom', 'gray_teleport', 'remove_custom'], time_out=10, settle_time=0.1)
+
+    def click_proceed_with_stamina(self, btn, after_sleep=0.1):
+        """
+        點擊前往按鈕，並在背景同時分析體力快照
+        """
+        stamina_frame = self.frame.copy()
+        self.click_box(btn, after_sleep=after_sleep)
+        self.get_stamina(frame=stamina_frame)
 
     def change_time_to_night(self):
         logger.info('change time to night')

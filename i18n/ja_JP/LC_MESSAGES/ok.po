@@ -612,6 +612,24 @@ msgstr "自動ローグライク失敗、次のノードまで手動操作が必
 msgid "current task"
 msgstr "現在のタスク"
 
+msgid "Tower of Adversity"
+msgstr "逆境深塔"
+
+msgid "Teleport to Tower of Adversity"
+msgstr "逆境深塔へ転送"
+
+msgid "Attempting to open the book via Mouse Click (Alt)"
+msgstr "マウスボタン(Alt)でガイドを開いています"
+
+msgid "Consumed Waveplate"
+msgstr "結晶波長板（消費済み）"
+
+msgid "Waveplate Crystal (Backup)"
+msgstr "結晶波長精錬板（予備）"
+
+msgid "Waveplate"
+msgstr "結晶波長板"
+
 msgid "in main"
 msgstr "メイン画面"
 
@@ -701,3 +719,18 @@ msgstr ""
 
 msgid "Farm"
 msgstr ""
+
+msgid "Waveplate Crystal (Backup)"
+msgstr "結晶波長精錬板 (備用)"
+
+msgid "Waveplate (Current)"
+msgstr "結晶玻片 (當前)"
+
+msgid "Consumed Waveplate"
+msgstr "已消耗結晶玻片"
+
+msgid "Activity Pts"
+msgstr "活躍度點數"
+
+msgid "Analyzing daily snapshots in background..."
+msgstr "デイリータスクのスクリーンショットをバックグラウンドで分析中..."

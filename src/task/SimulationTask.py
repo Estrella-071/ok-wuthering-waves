@@ -37,7 +37,7 @@ class SimulationTask(DomainTask):
             must_use = 0
         if config is None:
             config = self.config
-        current, back_up, total = self.open_F2_book_and_get_stamina()
+        current, back_up, total = self.open_F2_book_and_get_stamina(opened=daily)
         if total < self.stamina_once or total < must_use or (must_use == 0 and current < self.stamina_once):
             self.log_info(f'not enough stamina', notify=True)
             self.back()
@@ -54,7 +54,7 @@ class SimulationTask(DomainTask):
         if btns is None:
             raise Exception("can't find boss_proceed")
         top_btn = min(btns, key=lambda box: box.y)
-        self.click_box(top_btn, after_sleep=1)
+        self.click_proceed_with_stamina(top_btn)
         self.wait_click_travel()
         self.wait_in_team_and_world(time_out=self.teleport_timeout)
         self.sleep(1)

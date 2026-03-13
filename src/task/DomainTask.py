@@ -27,9 +27,14 @@ class DomainTask(WWOneTimeTask, BaseCombatTask):
         else:
             self.ensure_main()
 
-    def open_F2_book_and_get_stamina(self):
-        gray_book_boss = self.openF2Book('gray_book_boss')
-        self.click_box(gray_book_boss, after_sleep=1)
+    def open_F2_book_and_get_stamina(self, opened=False):
+        gray_book_boss = self.openF2Book('gray_book_boss', opened=opened)
+        # 智慧切換分頁：脈衝點擊直至特徵出現 (OCR 體力區域)
+        self.wait_until(
+            lambda: self.get_stamina()[0] != -1,
+            pre_action=lambda: self.click_box(gray_book_boss, after_sleep=0.1),
+            time_out=5, settle_time=0.1
+        )
         return self.get_stamina()
 
     def farm_in_domain(self, must_use=0):
