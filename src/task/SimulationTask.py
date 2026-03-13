@@ -56,6 +56,10 @@ class SimulationTask(DomainTask):
         top_btn = min(btns, key=lambda box: box.y)
         self.click_proceed_with_stamina(top_btn)
         self.wait_click_travel()
+        # 並行優化：在加載期間分析體力
+        if hasattr(self, '_stamina_snapshot'):
+            self.get_stamina(frame=self._stamina_snapshot)
+            del self._stamina_snapshot
         self.wait_in_team_and_world(time_out=self.teleport_timeout)
         self.sleep(1)
         self.walk_until_f(time_out=1)

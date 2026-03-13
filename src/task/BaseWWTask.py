@@ -1026,11 +1026,11 @@ class BaseWWTask(BaseTask):
 
     def click_proceed_with_stamina(self, btn, after_sleep=0.1):
         """
-        點擊前往按鈕，並在背景同時分析體力快照
+        點擊前往按鈕，並捕獲體力快照供後續非同步分析
         """
-        stamina_frame = self.frame.copy()
+        # 僅捕獲，不在此處執行耗時的 OCR
+        self._stamina_snapshot = self.frame.copy()
         self.click_box(btn, after_sleep=after_sleep)
-        self.get_stamina(frame=stamina_frame)
 
     def change_time_to_night(self):
         logger.info('change time to night')

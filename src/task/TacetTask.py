@@ -84,6 +84,12 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             self.click_on_book_target(index + 1, self.total_number)
             self.teleport_to_tacet(index)
             self.wait_click_travel()
+            
+            # 並行優化：在副本傳送加載期間分析剛才捕獲的體力快照
+            if hasattr(self, '_stamina_snapshot'):
+                self.get_stamina(frame=self._stamina_snapshot)
+                del self._stamina_snapshot
+                
             self.wait_in_team_and_world(time_out=120)
             if self.door_walk_method.get(index) is not None:
                 for method in self.door_walk_method.get(index):

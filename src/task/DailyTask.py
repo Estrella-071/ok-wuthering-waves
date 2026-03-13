@@ -69,8 +69,9 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         # 1. 快照捕獲 (傳送前)
         self.open_daily(snapshot=True)
         
-        # 2. 啟動深塔傳送 (不等待加載完成)
-        self.go_to_tower(book_opened=True)
+        # 2. 啟動深塔傳送 (非阻塞啟動)
+        # 此處 book_opened=True 是因為剛才 open_daily 已經幫我們快速點擊了分頁
+        self.go_to_tower(book_opened=True, wait=False)
         
         # 3. 核心優化：在點擊傳送後的黑屏加載間隙，並行分析快照
         used_stamina, completed = self.analyze_daily_snapshot()
@@ -120,7 +121,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.claim_battle_pass()
         self.log_info('Task completed', notify=True)
 
-    def go_to_tower(self, book_opened=False):
+    def go_to_tower(self, book_opened=False, wait=True):
         self.log_info(self.tr('Teleport to Tower of Adversity'))
         if not book_opened:
             self.ensure_main(time_out=80)
@@ -128,15 +129,17 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         if not gray_book_weekly:
             self.log_error(self.tr('go_to_tower can not find gray_book_weekly'))
             return
-        btn = self.wait_until(
-            lambda: self.find_one(Labels.boss_proceed, box=self.box_of_screen(0.94, 0.3, 0.97, 0.41), threshold=0.8),
-            pre_action=lambda: self.click_box(gray_book_weekly, after_sleep=0.3),
-            time_out=6, settle_time=0.1
-        )
-        if btn is None:
-            self.ensure_main(time_out=10)
+        
+        # 點擊副本項
+        self.click_box(gray_book_weekly, after_sleep=1)
+        
+        # 點擊前往
+        btns = self.find_feature(Labels.boss_proceed, box=self.box_of_screen(0.94, 0.3, 0.97, 0.41), threshold=0.8)
+        if btns is None:
+            self.log_error(self.tr('go_to_tower can not find boss_proceed'))
             return
-
+        btn = min(btns, key=lambda box: box.y)
+        
         self.wait_until(
             lambda: not self.find_one(Labels.boss_proceed, box=self.box_of_screen(0.94, 0.3, 0.97, 0.41)),
             pre_action=lambda: self.click_proceed_with_stamina(btn),
@@ -144,10 +147,11 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         )
 
         self.wait_click_travel()
-        # 移除了 analyze_daily_snapshot 的直接調用，改由 run() 在加載期間控制
-        self.sleep(0.1)
-        self.wait_in_team_and_world(time_out=120)
-        self.wait_until(lambda: self.in_team()[0], time_out=5, settle_time=0.1)
+        
+        if wait:
+            self.sleep(0.2)
+            self.wait_in_team_and_world(time_out=120)
+            self.wait_until(lambda: self.in_team()[0], time_out=5, settle_time=0.1)
 
     def claim_battle_pass(self):
         self.log_info('battle pass')
@@ -171,24 +175,21 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
 
     def open_daily(self, snapshot=False):
         self.log_info('open_daily')
-        gray_book_quest = self.openF2Book("gray_book_quest")
-        
-        if snapshot:
-            # 確保分頁載入
-            self.wait_until(
-                lambda: self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'\d+')),
-                pre_action=lambda: self.click_box(gray_book_quest, after_sleep=0.3),
-                time_out=5, settle_time=0.2, raise_if_not_found=False
-            )
-            # 捕獲第一張快照
-            self._daily_snapshot1 = self.frame.copy()
-            
-            # 捲動翻頁捕捉第二張 (用戶要求：點擊卷軸)
-            self.click(0.961, 0.6, after_sleep=0.3)
-            self.sleep(0.5)
-            self._daily_snapshot2 = self.frame.copy()
+        gray_book_quest = self.openF2Book(Labels.gray_book_quest)
+        if not gray_book_quest:
+            self.log_error(self.tr('open_daily can not find gray_book_quest'))
             return
-        
+            
+        if snapshot:
+            # 極速連拍模式：不再等待 OCR，利用 UI 響應間隙完成動作
+            self._daily_snapshot1 = self.frame.copy()
+            # 點擊卷軸區域下滑
+            self.click(0.961, 0.6, after_sleep=0.05) 
+            # 任務完成：壓縮切換分頁動作到快照流程中（提前為 go_to_tower 做準備）
+            # 點擊「周期挑戰」分頁按鈕區域
+            self.click_relative(0.04, 0.42, after_sleep=0.05) 
+            self._daily_snapshot2 = self.frame.copy()
+            return 
             
         # 脈衝點擊分頁直到 OCR 偵測到數字（取代 after_sleep=1.5 硬編碼）
         self.wait_until(
