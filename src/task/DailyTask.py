@@ -185,14 +185,18 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             return
             
         if snapshot:
-            # 極速連拍模式：不再等待 OCR，利用 UI 響應間隙完成動作
+            # 極速三連拍模式：利用 UI 響應間隙快速獲取所有數據截圖
+            # 1. 第一張：活躍度前半部分
             self._daily_snapshot1 = self.frame.copy()
-            # 點擊卷軸區域下滑
-            self.click(0.961, 0.6, after_sleep=0.05) 
-            # 任務完成：壓縮切換分頁動作到快照流程中（提前為 go_to_tower 做準備）
-            # 點擊「周期挑戰」分頁按鈕區域
-            self.click_relative(0.04, 0.42, after_sleep=0.05) 
+            
+            # 2. 模擬滾動並捕獲第二張：活躍度後半部分
+            self.click(0.961, 0.6, after_sleep=0.04) 
             self._daily_snapshot2 = self.frame.copy()
+            
+            # 3. 切換至「周期挑戰」分頁並捕獲第三張：體力數據
+            # 座標 0.04, 0.28 是側邊欄第二個按鈕區域
+            self.click_relative(0.04, 0.28, after_sleep=0.06)
+            self._stamina_snapshot = self.frame.copy()
             return 
             
         # 脈衝點擊分頁直到 OCR 偵測到數字（取代 after_sleep=1.5 硬編碼）
@@ -221,41 +225,43 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
 
     def analyze_daily_snapshot(self):
         """
-        分析由 open_daily(snapshot=True) 留下的截圖
+        異步分析：在傳送加載期間處理三張快照
         """
-        if not hasattr(self, '_daily_snapshot1') or not hasattr(self, '_daily_snapshot2'):
-            self.log_warning('No daily snapshots found, falling back to synchronous reading')
+        if not hasattr(self, '_daily_snapshot1') or not hasattr(self, '_daily_snapshot2') or not hasattr(self, '_stamina_snapshot'):
+            self.log_warning('Missing snapshots, falling back to synchronous reading')
             return self.open_daily()
             
-        self.log_info(self.tr('Analyzing daily snapshots in background...'))
+        self.info_set('current task', self.tr('Analyzing snapshots in background...'))
         
-        # 從第一張圖嘗試讀取
+        # 1. 體力分析 (使用第三張分頁截圖)
+        current_stamina, backup_stamina, _ = self.get_stamina(frame=self._stamina_snapshot)
+        
+        # 2. 活躍度進度分析 (已消耗體力)
         progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'), frame=self._daily_snapshot1)
         if not progress:
-            # 第一張圖沒讀到，從第二張圖讀取
             progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'), frame=self._daily_snapshot2)
             
-        if progress:
-            current = int(progress[0].name.split('/')[0])
-        else:
-            current = 0
-            
-        # 體力也是異步讀取 (使用第一張截圖即可，因為同一介面)
-        self.get_stamina(frame=self._daily_snapshot1)
+        current = int(progress[0].name.split('/')[0]) if progress else 0
         self.info_set('Consumed Waveplate', current)
         
-        # 讀取活躍度點數 (通常在第一或第二頁都有進度條)
+        # 3. 活躍度點數分析
         points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re, frame=self._daily_snapshot1)
         if not points_boxes:
             points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re, frame=self._daily_snapshot2)
             
         points = int(points_boxes[0].name) if points_boxes else 0
         self.info_set('Activity Pts', points)
+        
+        # 同時設定中文 Key 作為備選，確保在某些版本的 UI 中能顯示
+        self.info_set(self.tr('Waveplate (Current)'), current_stamina)
+        self.info_set(self.tr('Waveplate Crystal (Backup)'), backup_stamina)
+        
         self.info_set('current task', self.tr('Analysis completed'))
         
-        # 清理截圖釋放內存
+        # 清理截圖
         del self._daily_snapshot1
         del self._daily_snapshot2
+        del self._stamina_snapshot
         
         return current, points >= 100
 

@@ -619,7 +619,7 @@ msgid "Claimed Activity Pts"
 msgstr "領取後活躍度"
 
 msgid "Waveplate (Current)"
-msgstr "結晶波片 (目前)"
+msgstr "結晶波片 (當前)"
 
 msgid "Waveplate Crystal (Backup)"
 msgstr "結晶單質 (備用)"
