@@ -64,6 +64,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
 
     def run(self):
         WWOneTimeTask.run(self)
+        self.info_set_task(self.tr('Daily Task'))
         self.ensure_main(time_out=180)
         
         # 1. 快照捕獲 (傳送前)
@@ -122,7 +123,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.log_info('Task completed', notify=True)
 
     def go_to_tower(self, book_opened=False, wait=True):
-        self.log_info(self.tr('Teleport to Tower of Adversity'))
+        self.info_set_task('Teleport to Tower of Adversity')
         if not book_opened:
             self.ensure_main(time_out=80)
         gray_book_weekly = self.openF2Book(Labels.gray_book_weekly, opened=book_opened)
@@ -154,7 +155,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             self.wait_until(lambda: self.in_team()[0], time_out=5, settle_time=0.1)
 
     def claim_battle_pass(self):
-        self.log_info('battle pass')
+        self.info_set_task('battle pass')
         self.send_key_down('alt')
         self.sleep(0.1)
         self.click_relative(0.86, 0.05, down_time=0.05)
@@ -223,7 +224,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             self.log_warning('No daily snapshots found, falling back to synchronous reading')
             return self.open_daily()
             
-        self.log_info(self.tr('Analyzing daily snapshots in background...'))
+        self.info_set_task('Analyzing daily snapshots in background...')
         
         # 從第一張圖嘗試讀取
         progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'), frame=self._daily_snapshot1)
@@ -236,10 +237,6 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         else:
             current = 0
             
-        # 體力也是異步讀取 (使用第一張截圖即可，因為同一介面)
-        self.get_stamina(frame=self._daily_snapshot1)
-        self.info_set(self.tr('Consumed Waveplate'), current)
-        
         # 讀取活躍度點數 (通常在第一或第二頁都有進度條)
         points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re, frame=self._daily_snapshot1)
         if not points_boxes:
@@ -247,6 +244,10 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             
         points = int(points_boxes[0].name) if points_boxes else 0
         self.info_set(self.tr('Activity Pts'), points)
+
+        # 體力也是異步讀取 (現在在活躍度之後設置，以符合用戶要求的順序)
+        self.get_stamina(frame=self._daily_snapshot1)
+        self.info_set(self.tr('Consumed Waveplate'), current)
         
         # 清理截圖釋放內存
         del self._daily_snapshot1
@@ -260,11 +261,11 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             points = int(points_boxes[0].name)
         else:
             points = 0
-        self.info_set('Activity Pts', points)
+        self.info_set(self.tr('Activity Pts'), points)
         return points
 
     def claim_daily(self):
-        self.info_set('Current Task', 'claim daily')
+        self.info_set_task('claim daily')
         self.ensure_main(time_out=5)
         self.open_daily()
 
@@ -281,7 +282,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.ensure_main(time_out=10)
 
     def claim_mail(self):
-        self.info_set('current task', 'claim mail')
+        self.info_set_task('claim mail')
         self.ensure_main(time_out=5) # 確保在選單中，會執行 Esc 動作
         self.click(0.64, 0.95, after_sleep=1)
         self.click(0.14, 0.9, after_sleep=1)

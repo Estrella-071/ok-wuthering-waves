@@ -396,6 +396,20 @@ class BaseWWTask(BaseTask):
         else:
             return True
 
+    def info_set_task(self, current_task_name):
+        """
+        設置當前任務與兩行式日誌：上一個已完成任務 ✓ + 當前進行中任務 ...
+        """
+        last_task = getattr(self, '_last_task_name', None)
+        log_str = ""
+        if last_task and last_task != current_task_name:
+            log_str += f"{self.tr(last_task)} ✓\n"
+        log_str += f"{self.tr(current_task_name)}..."
+        
+        self.info_set(self.tr('Current Task'), self.tr(current_task_name))
+        self.info_set(self.tr('Log'), log_str)
+        self._last_task_name = current_task_name
+
     def get_stamina(self, frame=None):
         if frame is None:
             boxes = self.wait_ocr(0.49, 0.0, 0.92, 0.10, raise_if_not_found=False,
@@ -685,7 +699,7 @@ class BaseWWTask(BaseTask):
         if not self.wait_until(lambda: self.is_main(esc=esc), time_out=time_out, raise_if_not_found=False):
             raise Exception('Please start in game world and in team!')
         self.sleep(0.5)
-        self.info_set('current task', f'in main esc={esc}')
+        self.info_set_task(f'in main esc={esc}')
 
     def is_main(self, esc=True):
         if self.in_team_and_world():
