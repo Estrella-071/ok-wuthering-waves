@@ -396,19 +396,35 @@ class BaseWWTask(BaseTask):
         else:
             return True
 
-    def info_set_task(self, current_task_name):
+    def ui_init(self):
+        """
+        初始化 UI 資訊板，確保所有鍵名按順序排列
+        """
+        keys = [
+            'Current Task',
+            'Log',
+            'Activity Pts',
+            'Waveplate (Current)',
+            'Waveplate Crystal (Backup)',
+            'Consumed Waveplate'
+        ]
+        for k in keys:
+            self.info_set(self.tr(k), "")
+
+    def info_set_task(self, name, is_major=True):
         """
         設置當前任務與兩行式日誌：上一個已完成任務 ✓ + 當前進行中任務 ...
         """
-        last_task = getattr(self, '_last_task_name', None)
-        log_str = ""
-        if last_task and last_task != current_task_name:
-            log_str += f"{self.tr(last_task)} ✓\n"
-        log_str += f"{self.tr(current_task_name)}..."
-        
-        self.info_set(self.tr('Current Task'), self.tr(current_task_name))
-        self.info_set(self.tr('Log'), log_str)
-        self._last_task_name = current_task_name
+        self.info_set(self.tr('Current Task'), self.tr(name))
+        if is_major:
+            last_task = getattr(self, '_last_major_task', None)
+            log_str = ""
+            # 如果存在上一個主要任務，且與當前不同，則顯示為已完成
+            if last_task and last_task != name:
+                log_str += f"{self.tr(last_task)} ✓\n"
+            log_str += f"{self.tr(name)}..."
+            self.info_set(self.tr('Log'), log_str)
+            self._last_major_task = name
 
     def get_stamina(self, frame=None):
         if frame is None:
@@ -693,13 +709,13 @@ class BaseWWTask(BaseTask):
         return success
 
     def ensure_main(self, esc=True, time_out=30):
-        self.info_set('current task', f'wait main esc={esc}')
+        self.info_set_task(f'wait main esc={esc}', is_major=False)
         if not self._logged_in:
             time_out = 180
         if not self.wait_until(lambda: self.is_main(esc=esc), time_out=time_out, raise_if_not_found=False):
             raise Exception('Please start in game world and in team!')
         self.sleep(0.5)
-        self.info_set_task(f'in main esc={esc}')
+        self.info_set_task(f'in main esc={esc}', is_major=False)
 
     def is_main(self, esc=True):
         if self.in_team_and_world():

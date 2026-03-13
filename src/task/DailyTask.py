@@ -64,6 +64,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
 
     def run(self):
         WWOneTimeTask.run(self)
+        self.ui_init()
         self.info_set_task(self.tr('Daily Task'))
         self.ensure_main(time_out=180)
         
@@ -212,8 +213,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             current = int(progress[0].name.split('/')[0])
         else:
             current = 0
-        self.get_stamina() # 同步讀取體力數據到看板
-        self.info_set('Consumed Waveplate', current)
+        self.info_set(self.tr('Consumed Waveplate'), current)
         return current, self.get_total_daily_points() >= 100
 
     def analyze_daily_snapshot(self):
@@ -274,7 +274,8 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.sleep(1)
 
         total_points = self.get_total_daily_points()
-        self.info_set('Claimed Activity Pts', total_points)
+        # 直接更新 Activity Pts 即可，無需重複鍵名
+        self.info_set(self.tr('Activity Pts'), total_points)
         if total_points < 100:
             raise Exception("Can't complete daily task, may need to increase stamina manually!")
 
