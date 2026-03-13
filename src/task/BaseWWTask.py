@@ -411,10 +411,10 @@ class BaseWWTask(BaseTask):
 
     def info_set_task(self, name, is_major=True):
         """
-        設置 UI 顯示邏輯 (v2)：
-        1. Current Task (Row 1): 獨立顯示底層操作（如 wait main），隨時覆蓋，不參與滾動。
-        2. Task Log 1 (Row 2): 顯示邏輯步驟（如「點擊前往」）。
-        3. Task Log 2 (Row 3): 滾動行。當新的 Log 1 進來時，舊内容移至 Log 2。
+        設置 UI 顯示邏輯 (v3)：
+        1. Current Task (Row 1): 獨立顯示底層操作，字尾固定為 "..."。
+        2. Task Log 1 (Row 2): 當前主任務，字尾加 "..."。
+        3. Task Log 2 (Row 3): 上一個主任務，頂替時字尾改為 "✓"。
         """
         translated_name = self.tr(name)
         
@@ -426,12 +426,14 @@ class BaseWWTask(BaseTask):
             if not hasattr(self, '_ui_log_1'):
                 self._ui_log_1 = ""
             
-            # 將舊的 Log 1 物理移動到 Log 2
+            # 當新的主任務進來時，將舊的 Log 1 內容移動到 Log 2 並符號化
             if self._ui_log_1:
-                self.info_set(self.tr('Task Log 2'), self._ui_log_1)
+                # 滾動時將 "..." 替換為 "✓"
+                completed_log = self._ui_log_1.rstrip(".") + " ✓"
+                self.info_set(self.tr('Task Log 2'), completed_log)
             
-            # 更新 Log 1
-            new_log = f"{translated_name}"
+            # 更新 Log 1 (當前進行中的主任務)
+            new_log = f"{translated_name}..."
             self.info_set(self.tr('Task Log 1'), new_log)
             self._ui_log_1 = new_log
 
@@ -1019,6 +1021,9 @@ class BaseWWTask(BaseTask):
 
     def wait_click_travel(self):
         self.wait_until(self.click_traval_button, raise_if_not_found=True, time_out=10)
+        # 點擊傳送後，於黑色加載期間並行分析體力數據
+        if hasattr(self, '_stamina_snapshot') and self._stamina_snapshot is not None:
+            self.get_stamina(frame=self._stamina_snapshot)
 
     def wait_book(self, feature="gray_book_all_monsters", time_out=3):
         gray_book_boss = self.wait_until(

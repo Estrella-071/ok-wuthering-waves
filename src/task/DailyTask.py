@@ -124,7 +124,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.log_info('Task completed', notify=True)
 
     def go_to_tower(self, book_opened=False, wait=True):
-        self.info_set_task('Teleport to Tower of Adversity', is_major=False)
+        self.info_set_task('Teleport to Tower of Adversity', is_major=True)
         if not book_opened:
             self.ensure_main(time_out=80)
         gray_book_weekly = self.openF2Book(Labels.gray_book_weekly, opened=book_opened)
@@ -133,7 +133,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             return
         
         # 點擊副本項
-        self.info_set_task('Selecting Weekly/Tower Tab', is_major=False)
+        self.info_set_task('Selecting Weekly/Tower Tab', is_major=True)
         self.click_box(gray_book_weekly, after_sleep=1)
         
         # 點擊前往
@@ -249,14 +249,13 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         if not points_boxes:
             points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re, frame=self._daily_snapshot2)
             
-        points = int(points_boxes[0].name) if points_boxes else 0
-        if points > 0:
-            self.info_set(self.tr('Activity Pts'), points)
-
-        # 體力也是異步讀取 (現在在活躍度之後設置，以符合用戶要求的順序)
-        self.get_stamina(frame=self._daily_snapshot1)
-        self.info_set(self.tr('Consumed Waveplate'), current)
-        
+        if points_boxes:
+            points = int(points_boxes[0].name)
+            if points > 0:
+                self.info_set(self.tr('Activity Pts'), points)
+        else:
+            points = 0
+            
         # 清理截圖釋放內存
         del self._daily_snapshot1
         del self._daily_snapshot2
