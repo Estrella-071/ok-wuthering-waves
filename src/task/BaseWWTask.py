@@ -415,30 +415,36 @@ class BaseWWTask(BaseTask):
         1. Current Task: 顯示當前即時動作（函數名或操作）
         2. Task Log 1: 顯示上一條操作日誌
         3. Task Log 2: 顯示再上一條，實現日誌物理隊列滾動效果
-        註：這裡不再使用 is_major 屏蔽，而是將所有動作紀錄入日誌隊列，
-        但主要任務與次要動作在日誌流水中併行呈現。
         """
-        # 獲取當前存在的日誌內容，實現物理滾動 (3 -> 2 -> 1)
-        log1 = self.get_info(self.tr('Task Log 1'))
-        
-        # 如果當前有內容，則向下滾動（用戶要求 3 頂 2，這裡映射到 Log 1 和 Log 2）
-        if log1:
-            self.info_set(self.tr('Task Log 2'), log1)
-        
-        # 將「舊的第一行」移動到日誌流水中
-        current_op = self.get_info(self.tr('Current Task'))
-        if current_op:
-            self.info_set(self.tr('Task Log 1'), current_op)
-        
-        # 第一行顯示當前最新動作
-        op_suffix = "..."
-        if is_major:
-            # 主要任務加後綴區分
-            op_name = f"{self.tr(name)}"
-        else:
-            op_name = f"{self.tr(name)}"
+        if not hasattr(self, '_ui_log_queue'):
+            self._ui_log_queue = []
             
-        self.info_set(self.tr('Current Task'), f"{op_name}{op_suffix}")
+        # 獲取當前第一行內容（如果存在）
+        current_op = self.get_info(self.tr('Current Task')) if hasattr(self, 'get_info') else None
+        # 安全退避：如果 get_info 不存在，我們依賴內部隊列
+        if not current_op and self._ui_log_queue:
+            current_op = self._ui_log_queue[-1]
+
+        # 如果有新的動作，更新隊列
+        transformed_name = self.tr(name)
+        new_entry = f"{transformed_name}..."
+        
+        if not self._ui_log_queue or self._ui_log_queue[-1] != new_entry:
+            self._ui_log_queue.append(new_entry)
+            if len(self._ui_log_queue) > 3:
+                self._ui_log_queue.pop(0)
+
+        # 根據隊列刷新 UI
+        # 第一行始終是最新動作
+        self.info_set(self.tr('Current Task'), new_entry)
+        
+        # 第二行是隊列中的倒數第二個
+        if len(self._ui_log_queue) >= 2:
+            self.info_set(self.tr('Task Log 1'), self._ui_log_queue[-2])
+            
+        # 第三行是隊列中的倒數第三個
+        if len(self._ui_log_queue) >= 3:
+            self.info_set(self.tr('Task Log 2'), self._ui_log_queue[-3])
 
     def get_stamina(self, frame=None):
         if frame is None:

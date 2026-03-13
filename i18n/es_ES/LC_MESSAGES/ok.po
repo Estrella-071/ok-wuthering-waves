@@ -701,3 +701,28 @@ msgstr ""
 
 msgid "Farm"
 msgstr ""
+
+msgid "Waveplate Crystal (Backup)"
+msgstr "Cristal de ondas (Reserva)"
+
+msgid "Waveplate (Current)"
+msgstr "Cristal de ondas (Actual)"
+
+msgid "Consumed Waveplate"
+msgstr "Cristal de ondas consumido"
+
+msgid "Activity Pts"
+msgstr "Puntos de actividad"
+
+msgid "Analyzing daily snapshots in background..."
+msgstr "Analizando capturas diarias en segundo plano..."
+
+msgid "Current Task"
+msgstr "Tarea actual"
+
+msgid "Task Log 1"
+msgstr "Log"
+
+msgid "Task Log 2"
+msgstr "Log"
+

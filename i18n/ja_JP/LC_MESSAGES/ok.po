@@ -721,16 +721,25 @@ msgid "Farm"
 msgstr ""
 
 msgid "Waveplate Crystal (Backup)"
-msgstr "結晶波長精錬板 (備用)"
+msgstr "結晶波長精錬板 (予備)"
 
 msgid "Waveplate (Current)"
-msgstr "結晶玻片 (當前)"
+msgstr "結晶波片 (現在)"
 
 msgid "Consumed Waveplate"
-msgstr "已消耗結晶玻片"
+msgstr "消費された結晶波片"
 
 msgid "Activity Pts"
-msgstr "活躍度點數"
+msgstr "アクティビティポイント"
 
 msgid "Analyzing daily snapshots in background..."
 msgstr "デイリータスクのスクリーンショットをバックグラウンドで分析中..."
+
+msgid "Current Task"
+msgstr "現在のタスク"
+
+msgid "Task Log 1"
+msgstr "ログ"
+
+msgid "Task Log 2"
+msgstr "ログ"
