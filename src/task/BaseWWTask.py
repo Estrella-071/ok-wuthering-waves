@@ -398,40 +398,48 @@ class BaseWWTask(BaseTask):
 
     def ui_init(self):
         """
-        初始化 UI 資訊板，確保所有鍵名按順序排列
+        初始化 UI 資訊板，確保所有鍵名按順序排列 (強制使用繁體中文鍵名防止重複)
         """
         keys = [
-            'Current Task',
-            'Log',
-            'Activity Pts',
-            'Waveplate (Current)',
-            'Waveplate Crystal (Backup)',
-            'Consumed Waveplate'
+            '當前任務',
+            '日誌',
+            '活躍度點數',
+            '結晶玻片 (當前)',
+            '結晶單質 (備用)',
+            '已消耗結晶玻片'
         ]
         for k in keys:
-            self.info_set(self.tr(k), "")
+            self.info_set(k, "")
 
     def info_set_task(self, name, is_major=True):
         """
-        設置當前任務與兩行式日誌：上一個已完成任務 ✓ + 當前進行中任務 ...
+        設置當前任務與縮進式兩行日誌：
+        當前任務: [具體操作]
+        日誌: 上個任務 ✓
+              當前任務...
         """
-        self.info_set(self.tr('Current Task'), self.tr(name))
+        # 「當前任務」顯示即時操作細節
+        self.info_set('當前任務', self.tr(name))
+        
         if is_major:
             last_task = getattr(self, '_last_major_task', None)
+            # 格式：第一行 [內容] ✓，第二行 \u3000\u3000 [內容]...
             log_str = ""
-            # 如果存在上一個主要任務，且與當前不同，則顯示為已完成
             if last_task and last_task != name:
                 log_str += f"{self.tr(last_task)} ✓\n"
-            log_str += f"{self.tr(name)}..."
-            self.info_set(self.tr('Log'), log_str)
+            # 使用全型空格 \u3000 實現「信息」格留白的視覺效果
+            log_str += f"\u3000\u3000 {self.tr(name)}..."
+            self.info_set('日誌', log_str)
             self._last_major_task = name
 
     def get_stamina(self, frame=None):
+        # 擴大辨識範圍 (0.45~0.95)，相容不同解析度下的微移
+        rect = [0.45, 0.0, 0.95, 0.12]
         if frame is None:
-            boxes = self.wait_ocr(0.49, 0.0, 0.92, 0.10, raise_if_not_found=False,
+            boxes = self.wait_ocr(*rect, raise_if_not_found=False,
                                   match=[number_re, stamina_re], log=self.debug)
         else:
-            boxes = self.ocr(0.49, 0.0, 0.92, 0.10, frame=frame, match=[number_re, stamina_re])
+            boxes = self.ocr(*rect, frame=frame, match=[number_re, stamina_re])
             
         if not boxes:
             if frame is None:
@@ -444,8 +452,8 @@ class BaseWWTask(BaseTask):
                 current = int(match.group(1))
             elif match := number_re.search(box.name):
                 back_up = int(match.group(1))
-        self.info_set(self.tr('Waveplate (Current)'), current)
-        self.info_set(self.tr('Waveplate Crystal (Backup)'), back_up)
+        self.info_set('結晶玻片 (當前)', current)
+        self.info_set('結晶單質 (備用)', back_up)
         return current, back_up, current + back_up
 
     def use_stamina(self, once, must_use=0):

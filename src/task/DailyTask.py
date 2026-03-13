@@ -213,7 +213,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             current = int(progress[0].name.split('/')[0])
         else:
             current = 0
-        self.info_set(self.tr('Consumed Waveplate'), current)
+        self.info_set('已消耗結晶玻片', current)
         return current, self.get_total_daily_points() >= 100
 
     def analyze_daily_snapshot(self):
@@ -224,7 +224,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             self.log_warning('No daily snapshots found, falling back to synchronous reading')
             return self.open_daily()
             
-        self.info_set_task('Analyzing daily snapshots in background...')
+        self.info_set_task('Analyzing daily snapshots in background...', is_major=False)
         
         # 從第一張圖嘗試讀取
         progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'), frame=self._daily_snapshot1)
@@ -243,11 +243,11 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re, frame=self._daily_snapshot2)
             
         points = int(points_boxes[0].name) if points_boxes else 0
-        self.info_set(self.tr('Activity Pts'), points)
+        self.info_set('活躍度點數', points)
 
         # 體力也是異步讀取 (現在在活躍度之後設置，以符合用戶要求的順序)
         self.get_stamina(frame=self._daily_snapshot1)
-        self.info_set(self.tr('Consumed Waveplate'), current)
+        self.info_set('已消耗結晶玻片', current)
         
         # 清理截圖釋放內存
         del self._daily_snapshot1
@@ -261,7 +261,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             points = int(points_boxes[0].name)
         else:
             points = 0
-        self.info_set(self.tr('Activity Pts'), points)
+        self.info_set('活躍度點數', points)
         return points
 
     def claim_daily(self):
@@ -274,8 +274,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.sleep(1)
 
         total_points = self.get_total_daily_points()
-        # 直接更新 Activity Pts 即可，無需重複鍵名
-        self.info_set(self.tr('Activity Pts'), total_points)
+        self.info_set('活躍度點數', total_points)
         if total_points < 100:
             raise Exception("Can't complete daily task, may need to increase stamina manually!")
 
