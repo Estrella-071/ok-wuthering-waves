@@ -127,6 +127,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
 
     def go_to_tower(self, book_opened=False, wait=True):
         self.log_info(self.tr('Teleport to Tower of Adversity'))
+        self.info_set('current task', self.tr('Teleporting to Tower of Adversity'))
         if not book_opened:
             self.ensure_main(time_out=80)
         gray_book_weekly = self.openF2Book(Labels.gray_book_weekly, opened=book_opened)
@@ -144,12 +145,14 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             return
         btn = min(btns, key=lambda box: box.y)
         
+        self.info_set('current task', self.tr('Clicking proceed and Waiting for teleport...'))
         self.wait_until(
             lambda: not self.find_one(Labels.boss_proceed, box=self.box_of_screen(0.94, 0.3, 0.97, 0.41)),
             pre_action=lambda: self.click_proceed_with_stamina(btn),
             time_out=5, settle_time=0.1
         )
-
+        
+        self.info_set('current task', self.tr('Waiting for travel button...'))
         self.wait_click_travel()
         
         if wait:
@@ -190,12 +193,12 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             self._daily_snapshot1 = self.frame.copy()
             
             # 2. 模擬滾動並捕獲第二張：活躍度後半部分
-            self.click(0.961, 0.6, after_sleep=0.04) 
+            self.click(0.961, 0.6, after_sleep=0.15) 
             self._daily_snapshot2 = self.frame.copy()
             
             # 3. 切換至「周期挑戰」分頁並捕獲第三張：體力數據
-            # 座標 0.04, 0.28 是側邊欄第二個按鈕區域
-            self.click_relative(0.04, 0.28, after_sleep=0.06)
+            # 增加等待時間以確保介面加載完成，座標 0.04, 0.28 點擊「周期挑戰」
+            self.click_relative(0.04, 0.28, after_sleep=0.25)
             self._stamina_snapshot = self.frame.copy()
             return 
             
@@ -233,8 +236,15 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             
         self.info_set('current task', self.tr('Analyzing snapshots in background...'))
         
-        # 1. 體力分析 (使用第三張分頁截圖)
+        # 1. 體力分析 (優先使用第三張截圖，若失敗則從活躍度截圖回退)
+        # 體力區域在書本介面是全域性的，通常在所有分頁都可見
         current_stamina, backup_stamina, _ = self.get_stamina(frame=self._stamina_snapshot)
+        if current_stamina == -1:
+            self.log_debug('Stamina OCR failed on snapshot 3, trying snapshot 1')
+            current_stamina, backup_stamina, _ = self.get_stamina(frame=self._daily_snapshot1)
+        if current_stamina == -1:
+            self.log_debug('Stamina OCR failed on snapshot 1, trying snapshot 2')
+            current_stamina, backup_stamina, _ = self.get_stamina(frame=self._daily_snapshot2)
         
         # 2. 活躍度進度分析 (已消耗體力)
         progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'), frame=self._daily_snapshot1)
