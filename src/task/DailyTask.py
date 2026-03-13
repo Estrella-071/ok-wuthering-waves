@@ -79,7 +79,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         
         # 4. 現在才等待傳送加載完成
         self.wait_in_team_and_world(time_out=120)
-        self.log_info(self.tr('Arrived at Tower of Adversity'))
+        self.info_set('current task', self.tr('Arrived at Tower of Adversity'))
         self.wait_until(lambda: self.in_team()[0], time_out=5, settle_time=0.1)
 
         condition1 = self.config.get('Auto Farm all Nightmare Nest')
@@ -114,16 +114,20 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
                 else:
                     self.get_task_by_class(SimulationTask).farm_simulation(daily=True, used_stamina=used_stamina,
                                                                            config=self.config)
-                self.ensure_main()
-                self.sleep(1)
+                self.log_error("NightmareNestTask Failed", e)
+                self.ensure_main(time_out=180)
+            self.info_set('current task', self.tr('Claiming Daily Rewards'))
             self.claim_daily()
 
         # 任務完成後，或判定已全領取：此時才關閉書本回到大世界
         self.back(after_sleep=0.1)
         self.wait_until(lambda: self.in_team_and_world(), time_out=5, settle_time=0.1)
 
+        self.info_set('current task', self.tr('Opening Mail'))
         self.claim_mail()
+        self.info_set('current task', self.tr('Opening Battle Pass'))
         self.claim_battle_pass()
+        self.info_set('current task', self.tr('Daily Tasks Completed'))
         self.log_info('Task completed', notify=True)
 
     def go_to_tower(self, book_opened=False, wait=True):
@@ -186,18 +190,13 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             return
             
         if snapshot:
-            # 極速三連拍模式：利用 UI 響應間隙快速獲取所有數據截圖
-            # 1. 第一張：活躍度前半部分
+            # 極速連拍模式：僅採取兩張活躍度快照，體力從首張快照中提取
+            # 1. 第一張：包含頂部體力數據與活躍度前半部分
             self._daily_snapshot1 = self.frame.copy()
             
             # 2. 模擬滾動並捕獲第二張：活躍度後半部分
-            self.click(0.961, 0.6, after_sleep=0.04) 
+            self.click(0.961, 0.6, after_sleep=0.1) 
             self._daily_snapshot2 = self.frame.copy()
-            
-            # 3. 切換至「周期挑戰」分頁並捕獲第三張：體力數據
-            # 座標 0.04, 0.28 是側邊欄第二個按鈕區域
-            self.click_relative(0.04, 0.28, after_sleep=0.2) # 增加等待時間至 0.2s 應對分頁動畫位移
-            self._stamina_snapshot = self.frame.copy()
             return 
             
         # 脈衝點擊分頁直到 OCR 偵測到數字（取代 after_sleep=1.5 硬編碼）
@@ -226,19 +225,16 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
 
     def analyze_daily_snapshot(self):
         """
-        異步分析：在傳送加載期間處理三張快照
+        異步分析：在傳送加載期間處理快照
         """
-        if not hasattr(self, '_daily_snapshot1') or not hasattr(self, '_daily_snapshot2') or not hasattr(self, '_stamina_snapshot'):
+        if not hasattr(self, '_daily_snapshot1') or not hasattr(self, '_daily_snapshot2'):
             self.log_warning('Missing snapshots, falling back to synchronous reading')
             return self.open_daily()
             
-        msg = self.tr('Analyzing snapshots in background...')
-        self.info_set('current task', msg)
-        self.log_info(msg) # 補全 log_info 以更新 UI 日誌窗格
+        self.info_set('current task', self.tr('Analyzing snapshots in background...'))
         
-        # 1. 體力分析 (使用第三張分頁截圖)
-        current_stamina, backup_stamina, _ = self.get_stamina(frame=self._stamina_snapshot)
-        self.log_info(f"{self.tr('Waveplate (Current)')}: {current_stamina}, {self.tr('Waveplate Crystal (Backup)')}: {backup_stamina}")
+        # 1. 體力分析 (回歸使用第一張截圖，避開切換分頁造成的黑屏/延遲風險)
+        current_stamina, backup_stamina, _ = self.get_stamina(frame=self._daily_snapshot1)
         
         # 2. 活躍度進度分析 (已消耗體力)
         progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'), frame=self._daily_snapshot1)
@@ -260,14 +256,13 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.info_set(self.tr('Waveplate (Current)'), current_stamina)
         self.info_set(self.tr('Waveplate Crystal (Backup)'), backup_stamina)
         
-        msg_done = self.tr('Analysis completed')
-        self.info_set('current task', msg_done)
-        self.log_info(msg_done)
+        self.info_set('current task', self.tr('Analysis completed'))
         
         # 清理截圖
         del self._daily_snapshot1
         del self._daily_snapshot2
-        del self._stamina_snapshot
+        if hasattr(self, '_stamina_snapshot'):
+            del self._stamina_snapshot
         
         return current, points >= 100
 
@@ -281,7 +276,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         return points
 
     def claim_daily(self):
-        self.info_set('current task', 'claim daily')
+        self.info_set('current task', self.tr('Claiming Task'))
         self.ensure_main(time_out=5)
         self.open_daily()
 
@@ -298,8 +293,9 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.ensure_main(time_out=10)
 
     def claim_mail(self):
-        self.info_set('current task', 'claim mail')
+        self.info_set('current task', self.tr('Opening ESC Menu'))
         self.ensure_main(time_out=5) # 確保在選單中，會執行 Esc 動作
+        self.info_set('current task', self.tr('Claiming Mail'))
         self.click(0.64, 0.95, after_sleep=1)
         self.click(0.14, 0.9, after_sleep=1)
         self.ensure_main(time_out=10)

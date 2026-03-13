@@ -58,12 +58,14 @@ class SimulationTask(DomainTask):
             raise Exception("can't find boss_proceed")
         top_btn = min(btns, key=lambda box: box.y)
         self.click_proceed_with_stamina(top_btn)
+        self.info_set('current task', self.tr('Teleporting to Simulation Challenge'))
         self.wait_click_travel()
         # 並行優化：在加載期間分析體力
         if hasattr(self, '_stamina_snapshot'):
             self.get_stamina(frame=self._stamina_snapshot)
             del self._stamina_snapshot
         self.wait_in_team_and_world(time_out=self.teleport_timeout)
+        self.info_set('current task', self.tr('Arrived at Simulation Challenge'))
         self.sleep(1)
         self.walk_until_f(time_out=1)
         self.pick_f()
@@ -74,6 +76,7 @@ class SimulationTask(DomainTask):
         else:  # selection == 'Shell Credit'
             index = 2
         self.click_relative(0.22, 0.17 + index * 0.08, after_sleep=1)
+        self.info_set('current task', self.tr('Starting Battle'))
         self.click_relative(0.93, 0.90, after_sleep=1)
         self.click_relative(0.93, 0.90, after_sleep=1)
         self.wait_in_team_and_world(time_out=self.teleport_timeout)

@@ -92,6 +92,7 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
                 del self._stamina_snapshot
                 
             self.wait_in_team_and_world(time_out=120)
+            self.info_set('current task', self.tr('Arrived at Tacet Discord Nest'))
             if self.door_walk_method.get(index) is not None:
                 for method in self.door_walk_method.get(index):
                     self.send_key_down(method[0])
@@ -105,9 +106,11 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             else:
                 self.walk_until_f(time_out=4, backward_time=0, raise_if_not_found=True)
                 self.pick_f(handle_claim=False)
+            self.info_set('current task', self.tr('Starting Battle'))
             self.combat_once()
             self.sleep(3)
             self.walk_to_treasure()
+            self.info_set('current task', self.tr('Claiming Reward'))
             self.pick_f(handle_claim=False)
             can_continue, used = self.use_stamina(once=self.stamina_once, must_use=must_use)
             self.info_incr('used stamina', used)
@@ -123,6 +126,7 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             self.back(after_sleep=1)
 
     def teleport_to_tacet(self, index):
+        self.info_set('current task', self.tr('Teleporting to Tacet Discord Nest'))
         self.info_set('Teleport to Tacet Suppression', index)
         if index >= self.total_number:
             raise IndexError(f'Index out of range, max is {self.total_number}')

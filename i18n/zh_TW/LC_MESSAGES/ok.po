@@ -772,3 +772,51 @@ msgstr "活躍度點數"
 
 msgid "Analyzing daily snapshots in background..."
 msgstr "正在背景分析每日任務快照..."
+
+msgid "Arrived at Tower of Adversity"
+msgstr "已抵達逆境深塔"
+
+msgid "Teleporting to Tacet Discord Nest"
+msgstr "正在傳送到無音區"
+
+msgid "Arrived at Tacet Discord Nest"
+msgstr "已抵達無音區"
+
+msgid "Teleporting to Forgery Challenge"
+msgstr "正在傳送到凝素領域"
+
+msgid "Arrived at Forgery Challenge"
+msgstr "已抵達凝素領域"
+
+msgid "Teleporting to Simulation Challenge"
+msgstr "正在傳送到模擬領域"
+
+msgid "Arrived at Simulation Challenge"
+msgstr "已抵達模擬領域"
+
+msgid "Teleporting to Nightmare Nest"
+msgstr "正在傳送到夢魘巢穴"
+
+msgid "Arrived at Nightmare Nest"
+msgstr "已抵達夢魘巢穴"
+
+msgid "Starting Battle"
+msgstr "開始戰鬥"
+
+msgid "Claiming Reward"
+msgstr "領取獎勵"
+
+msgid "Opening ESC Menu"
+msgstr "打開 Esc 選單"
+
+msgid "Claiming Mail"
+msgstr "領取郵件"
+
+msgid "Claiming Task"
+msgstr "領取任務"
+
+msgid "Claiming All Rewards"
+msgstr "領取所有獎勵"
+
+msgid "Daily Tasks Completed"
+msgstr "每日一條龍完成"

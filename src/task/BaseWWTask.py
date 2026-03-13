@@ -398,14 +398,17 @@ class BaseWWTask(BaseTask):
 
     def get_stamina(self, frame=None):
         if frame is None:
-            # 寬量程 OCR：針對分頁切換動畫導致的水平位移，大幅向左 (0.3) 與向上 (0.0) 擴展範圍
-            boxes = self.wait_ocr(0.3, 0.0, 0.95, 0.15, raise_if_not_found=False,
+            boxes = self.wait_ocr(0.44, 0.0, 0.9, 0.10, raise_if_not_found=False,
                                   match=[number_re, stamina_re], log=self.debug)
         else:
-            boxes = self.ocr(0.3, 0.0, 0.95, 0.15, frame=frame, match=[number_re, stamina_re])
+            boxes = self.ocr(0.44, 0.0, 0.9, 0.10, frame=frame, match=[number_re, stamina_re])
             
         if not boxes:
-            if frame is None:
+            if frame is not None:
+                # 偵錯用：保存識別失敗的幀
+                cv2.imwrite('screenshots/stamina_error.png', frame)
+                logger.warning('Stamina OCR failed on frame, saved to screenshots/stamina_error.png')
+            else:
                 self.screenshot('stamina_error')
             return -1, -1, -1
         current = 0
@@ -417,7 +420,6 @@ class BaseWWTask(BaseTask):
                 back_up = int(match.group(1))
         self.info_set('Waveplate (Current)', current)
         self.info_set('Waveplate Crystal (Backup)', back_up)
-        logger.info(f"Stamina analyzed: Current={current}, Backup={back_up}")
         return current, back_up, current + back_up
 
     def use_stamina(self, once, must_use=0):
