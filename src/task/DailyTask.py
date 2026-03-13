@@ -241,9 +241,8 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             current = 0
             
         # 體力也是異步讀取 (使用第一張截圖即可，因為同一介面)
-        current_waveplate, _, _ = self.get_stamina(frame=self._daily_snapshot1)
-        self.info_set('current daily progress', current)
-        self.info_set(self.tr('Consumed Waveplate'), current)
+        self.get_stamina(frame=self._daily_snapshot1)
+        self.info_set('Consumed Waveplate', current)
         
         # 讀取活躍度點數 (通常在第一或第二頁都有進度條)
         points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re, frame=self._daily_snapshot1)
@@ -251,11 +250,8 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re, frame=self._daily_snapshot2)
             
         points = int(points_boxes[0].name) if points_boxes else 0
-        self.info_set('total daily points', points)
-        self.info_set(self.tr('Activity Pts'), points)
+        self.info_set('Activity Pts', points)
         self.info_set('current task', self.tr('Analysis completed'))
-        
-        self.log_info(f"{self.tr('Consumed Waveplate')}: {current}/180, {self.tr('Activity Pts')}: {points}")
         
         # 清理截圖釋放內存
         del self._daily_snapshot1

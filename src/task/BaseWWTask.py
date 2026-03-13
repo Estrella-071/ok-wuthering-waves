@@ -414,13 +414,8 @@ class BaseWWTask(BaseTask):
                 current = int(match.group(1))
             elif match := number_re.search(box.name):
                 back_up = int(match.group(1))
-        self.info_set('current_stamina', current)
-        self.info_set('back_up_stamina', back_up)
-        # 本地化顯示
-        self.info_set(self.tr('Waveplate (Current)'), current)
-        self.info_set(self.tr('Waveplate Crystal (Backup)'), back_up)
-        
-        self.log_info(f"{self.tr('Waveplate (Current)')}: {current}, {self.tr('Waveplate Crystal (Backup)')}: {back_up}")
+        self.info_set('Waveplate (Current)', current)
+        self.info_set('Waveplate Crystal (Backup)', back_up)
         return current, back_up, current + back_up
 
     def use_stamina(self, once, must_use=0):
