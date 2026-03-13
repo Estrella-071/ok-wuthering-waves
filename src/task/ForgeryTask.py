@@ -68,7 +68,7 @@ class ForgeryTask(DomainTask):
         )
         # 確定分頁就位後，單次執行目標點擊
         self.click_on_book_target(serial_number, self.total_number)
-        self.info_set_task(self.tr('Forgery Challenge'))
+        self.info_set_task(self.tr('Forgery Challenge'), is_major=True)
         if serial_number > self.total_number:
             raise IndexError(f'Index out of range, max is {self.total_number}')
         # if daily:

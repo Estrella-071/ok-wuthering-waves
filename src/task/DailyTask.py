@@ -124,7 +124,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.log_info('Task completed', notify=True)
 
     def go_to_tower(self, book_opened=False, wait=True):
-        self.info_set_task('Teleport to Tower of Adversity')
+        self.info_set_task('Teleport to Tower of Adversity', is_major=False)
         if not book_opened:
             self.ensure_main(time_out=80)
         gray_book_weekly = self.openF2Book(Labels.gray_book_weekly, opened=book_opened)
@@ -156,7 +156,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             self.wait_until(lambda: self.in_team()[0], time_out=5, settle_time=0.1)
 
     def claim_battle_pass(self):
-        self.info_set_task('battle pass')
+        self.info_set_task('Claim Battle Pass Rewards', is_major=False)
         self.send_key_down('alt')
         self.sleep(0.1)
         self.click_relative(0.86, 0.05, down_time=0.05)
@@ -213,7 +213,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             current = int(progress[0].name.split('/')[0])
         else:
             current = 0
-        self.info_set('已消耗結晶玻片', current)
+        self.info_set(self.tr('Consumed Waveplate'), current)
         return current, self.get_total_daily_points() >= 100
 
     def analyze_daily_snapshot(self):
@@ -243,11 +243,11 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re, frame=self._daily_snapshot2)
             
         points = int(points_boxes[0].name) if points_boxes else 0
-        self.info_set('活躍度點數', points)
+        self.info_set(self.tr('Activity Pts'), points)
 
         # 體力也是異步讀取 (現在在活躍度之後設置，以符合用戶要求的順序)
         self.get_stamina(frame=self._daily_snapshot1)
-        self.info_set('已消耗結晶玻片', current)
+        self.info_set(self.tr('Consumed Waveplate'), current)
         
         # 清理截圖釋放內存
         del self._daily_snapshot1
@@ -261,11 +261,11 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             points = int(points_boxes[0].name)
         else:
             points = 0
-        self.info_set('活躍度點數', points)
+        self.info_set(self.tr('Activity Pts'), points)
         return points
 
     def claim_daily(self):
-        self.info_set_task('claim daily')
+        self.info_set_task('Claim Daily Rewards', is_major=False)
         self.ensure_main(time_out=5)
         self.open_daily()
 
@@ -274,7 +274,8 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.sleep(1)
 
         total_points = self.get_total_daily_points()
-        self.info_set('活躍度點數', total_points)
+        # 直接更新 Activity Pts 即可，無需重複鍵名
+        self.info_set(self.tr('Activity Pts'), total_points)
         if total_points < 100:
             raise Exception("Can't complete daily task, may need to increase stamina manually!")
 

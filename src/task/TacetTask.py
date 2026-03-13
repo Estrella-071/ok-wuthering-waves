@@ -122,7 +122,7 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             self.back(after_sleep=1)
 
     def teleport_to_tacet(self, index):
-        self.info_set_task(self.tr('Tacet Suppression'))
+        self.info_set_task(self.tr('Tacet Suppression'), is_major=True)
         if index >= self.total_number:
             raise IndexError(f'Index out of range, max is {self.total_number}')
         self.click_on_book_target(index + 1, self.total_number)

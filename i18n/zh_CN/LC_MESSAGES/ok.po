@@ -772,3 +772,12 @@ msgstr "活跃度点数"
 
 msgid "Analyzing daily snapshots in background..."
 msgstr "正在背景分析每日任务快照..."
+
+msgid "Current Task"
+msgstr "当前任务"
+
+msgid "Task Log"
+msgstr "日志"
+
+msgid " "
+msgstr " "
