@@ -137,7 +137,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.click_box(gray_book_weekly, after_sleep=1)
         
         # 點擊前往
-        self.info_set_task('Clicking Proceed Button', is_major=False)
+        self.info_set_task('Clicking Proceed Button', is_major=True)
         btns = self.find_feature(Labels.boss_proceed, box=self.box_of_screen(0.94, 0.3, 0.97, 0.41), threshold=0.8)
         if btns is None:
             self.log_error(self.tr('go_to_tower can not find boss_proceed'))
@@ -150,7 +150,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             time_out=5, settle_time=0.1
         )
 
-        self.info_set_task('Clicking Fast Travel Button', is_major=False)
+        self.info_set_task('Clicking Fast Travel Button', is_major=True)
         self.wait_click_travel()
         
         if wait:
@@ -159,7 +159,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             self.wait_until(lambda: self.in_team()[0], time_out=5, settle_time=0.1)
 
     def claim_battle_pass(self):
-        self.info_set_task('Checking Battle Pass Status', is_major=False)
+        self.info_set_task('Checking Battle Pass Status', is_major=True)
         self.send_key_down('alt')
         self.sleep(0.1)
         self.click_relative(0.86, 0.05, down_time=0.05)
@@ -179,23 +179,23 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.ensure_main()
 
     def open_daily(self, snapshot=False):
-        self.info_set_task('Opening Daily Quest Book (F2)', is_major=False)
+        self.info_set_task('Opening Daily Quest Book (F2)', is_major=True)
         gray_book_quest = self.openF2Book(Labels.gray_book_quest)
         if not gray_book_quest:
             self.log_error(self.tr('open_daily can not find gray_book_quest'))
             return
             
         if snapshot:
-            self.info_set_task('Capturing Snapshot 1', is_major=False)
+            self.info_set_task('Capturing Snapshot 1', is_major=True)
             self._daily_snapshot1 = self.frame.copy()
             # 點擊卷軸區域下滑
-            self.info_set_task('Scrolling Daily List', is_major=False)
+            self.info_set_task('Scrolling Daily List', is_major=True)
             self.click(0.961, 0.6, after_sleep=0.05) 
             # 任務完成：壓縮切換分頁動作到快照流程中（提前為 go_to_tower 做準備）
             # 點擊「周期挑戰」分頁按鈕區域
-            self.info_set_task('Switching to Challenge Tab', is_major=False)
+            self.info_set_task('Switching to Challenge Tab', is_major=True)
             self.click_relative(0.04, 0.42, after_sleep=0.05) 
-            self.info_set_task('Capturing Snapshot 2', is_major=False)
+            self.info_set_task('Capturing Snapshot 2', is_major=True)
             self._daily_snapshot2 = self.frame.copy()
             return 
             
@@ -217,9 +217,9 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'))
         if progress:
             current = int(progress[0].name.split('/')[0])
+            self.info_set(self.tr('Consumed Waveplate'), current)
         else:
             current = 0
-        self.info_set(self.tr('Consumed Waveplate'), current)
         return current, self.get_total_daily_points() >= 100
 
     def analyze_daily_snapshot(self):
@@ -230,7 +230,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             self.log_warning('No daily snapshots found, falling back to synchronous reading')
             return self.open_daily()
             
-        self.info_set_task('Analyzing daily snapshots in background...', is_major=False)
+        self.info_set_task('Analyzing daily snapshots in background...', is_major=True)
         
         # 從第一張圖嘗試讀取
         progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'), frame=self._daily_snapshot1)
@@ -240,6 +240,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             
         if progress:
             current = int(progress[0].name.split('/')[0])
+            self.info_set(self.tr('Consumed Waveplate'), current)
         else:
             current = 0
             
@@ -290,9 +291,9 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.ensure_main(time_out=10)
 
     def claim_mail(self):
-        self.info_set_task('Opening Mailbox', is_major=False)
+        self.info_set_task('Opening Mailbox', is_major=True)
         self.ensure_main(time_out=5) # 確保在選單中，會執行 Esc 動作
-        self.info_set_task('Claiming All Mails', is_major=False)
+        self.info_set_task('Claiming All Mails', is_major=True)
         self.click(0.64, 0.95, after_sleep=1)
         self.click(0.14, 0.9, after_sleep=1)
         self.ensure_main(time_out=10)

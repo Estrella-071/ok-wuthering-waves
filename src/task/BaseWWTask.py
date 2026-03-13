@@ -411,40 +411,29 @@ class BaseWWTask(BaseTask):
 
     def info_set_task(self, name, is_major=True):
         """
-        設置 UI 顯示邏輯：
-        1. Current Task: 顯示當前即時動作（函數名或操作）
-        2. Task Log 1: 顯示上一條操作日誌
-        3. Task Log 2: 顯示再上一條，實現日誌物理隊列滾動效果
+        設置 UI 顯示邏輯 (v2)：
+        1. Current Task (Row 1): 獨立顯示底層操作（如 wait main），隨時覆蓋，不參與滾動。
+        2. Task Log 1 (Row 2): 顯示邏輯步驟（如「點擊前往」）。
+        3. Task Log 2 (Row 3): 滾動行。當新的 Log 1 進來時，舊内容移至 Log 2。
         """
-        if not hasattr(self, '_ui_log_queue'):
-            self._ui_log_queue = []
-            
-        # 獲取當前第一行內容（如果存在）
-        current_op = self.get_info(self.tr('Current Task')) if hasattr(self, 'get_info') else None
-        # 安全退避：如果 get_info 不存在，我們依賴內部隊列
-        if not current_op and self._ui_log_queue:
-            current_op = self._ui_log_queue[-1]
-
-        # 如果有新的動作，更新隊列
-        transformed_name = self.tr(name)
-        new_entry = f"{transformed_name}..."
+        translated_name = self.tr(name)
         
-        if not self._ui_log_queue or self._ui_log_queue[-1] != new_entry:
-            self._ui_log_queue.append(new_entry)
-            if len(self._ui_log_queue) > 3:
-                self._ui_log_queue.pop(0)
-
-        # 根據隊列刷新 UI
-        # 第一行始終是最新動作
-        self.info_set(self.tr('Current Task'), new_entry)
-        
-        # 第二行是隊列中的倒數第二個
-        if len(self._ui_log_queue) >= 2:
-            self.info_set(self.tr('Task Log 1'), self._ui_log_queue[-2])
+        if not is_major:
+            # 第一行：具體操作與函式 (獨立顯示)
+            self.info_set(self.tr('Current Task'), f"{translated_name}...")
+        else:
+            # 邏輯日誌流水：Log 1 -> Log 2 滾動
+            if not hasattr(self, '_ui_log_1'):
+                self._ui_log_1 = ""
             
-        # 第三行是隊列中的倒數第三個
-        if len(self._ui_log_queue) >= 3:
-            self.info_set(self.tr('Task Log 2'), self._ui_log_queue[-3])
+            # 將舊的 Log 1 物理移動到 Log 2
+            if self._ui_log_1:
+                self.info_set(self.tr('Task Log 2'), self._ui_log_1)
+            
+            # 更新 Log 1
+            new_log = f"{translated_name}"
+            self.info_set(self.tr('Task Log 1'), new_log)
+            self._ui_log_1 = new_log
 
     def get_stamina(self, frame=None):
         if frame is None:
@@ -468,8 +457,11 @@ class BaseWWTask(BaseTask):
             logger.warning("get_stamina: No boxes found")
 
         # 強制更新 UI，避免保持為 ui_init 的空白狀態
-        self.info_set(self.tr('Waveplate (Current)'), current if current != -1 else "?")
-        self.info_set(self.tr('Waveplate Crystal (Backup)'), back_up if back_up != -1 else "?")
+        # 更新 UI (僅在有數值時)
+        if current != -1:
+            self.info_set(self.tr('Waveplate (Current)'), current)
+        if back_up != -1:
+            self.info_set(self.tr('Waveplate Crystal (Backup)'), back_up)
         
         return current, back_up, (current + back_up) if (current != -1 and back_up != -1) else -1
 
