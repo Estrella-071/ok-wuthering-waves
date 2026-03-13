@@ -774,10 +774,7 @@ msgid "Analyzing daily snapshots in background..."
 msgstr "正在背景分析每日任务快照..."
 
 msgid "Current Task"
-msgstr "当前任务"
+msgstr "具体操作"
 
 msgid "Task Log"
-msgstr "日志"
-
-msgid " "
-msgstr " "
+msgstr "任务进度"

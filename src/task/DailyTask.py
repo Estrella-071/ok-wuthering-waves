@@ -65,8 +65,10 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
     def run(self):
         WWOneTimeTask.run(self)
         self.ui_init()
-        self.info_set_task(self.tr('Daily Task'))
+        self.info_set_task('Daily Task', is_major=True)
+        self.info_set_task('wait main esc=True', is_major=False)
         self.ensure_main(time_out=180)
+        self.info_set_task('in main esc=True', is_major=False)
         
         # 1. 快照捕獲 (傳送前)
         self.open_daily(snapshot=True)
@@ -113,20 +115,25 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
                                                                            config=self.config)
                 self.ensure_main()
                 self.sleep(1)
-            self.claim_daily()
+                self.info_set_task('Claim Daily Rewards', is_major=False)
+                self.claim_daily()
 
         # 任務完成後，或判定已全領取：此時才關閉書本回到大世界
         self.back(after_sleep=0.1)
         self.wait_until(lambda: self.in_team_and_world(), time_out=5, settle_time=0.1)
 
+        self.info_set_task('Claim Mails', is_major=False)
         self.claim_mail()
+        self.info_set_task('Claim Battle Pass Rewards', is_major=False)
         self.claim_battle_pass()
         self.log_info('Task completed', notify=True)
 
     def go_to_tower(self, book_opened=False, wait=True):
         self.info_set_task('Teleport to Tower of Adversity', is_major=False)
         if not book_opened:
+            self.info_set_task('ensure_main for tower', is_major=False)
             self.ensure_main(time_out=80)
+        self.info_set_task('openF2Book Labels.gray_book_weekly', is_major=False)
         gray_book_weekly = self.openF2Book(Labels.gray_book_weekly, opened=book_opened)
         if not gray_book_weekly:
             self.log_error(self.tr('go_to_tower can not find gray_book_weekly'))
@@ -226,10 +233,13 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             
         self.info_set_task('Analyzing daily snapshots in background...', is_major=False)
         
-        # 從第一張圖嘗試讀取
+        # 體力與備用體力異步讀取 (優先度高，用戶關切)
+        self.get_stamina(frame=self._daily_snapshot1)
+        
+        # 從第一張圖嘗試讀取消耗體力
+        self.info_set_task('OCR Consumed Waveplate from snapshot', is_major=False)
         progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'), frame=self._daily_snapshot1)
         if not progress:
-            # 第一張圖沒讀到，從第二張圖讀取
             progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'), frame=self._daily_snapshot2)
             
         if progress:
@@ -237,16 +247,16 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         else:
             current = 0
             
-        # 讀取活躍度點數 (通常在第一或第二頁都有進度條)
+        # 讀取活躍度點數
+        self.info_set_task('OCR Activity Pts from snapshot', is_major=False)
         points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re, frame=self._daily_snapshot1)
         if not points_boxes:
             points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re, frame=self._daily_snapshot2)
             
         points = int(points_boxes[0].name) if points_boxes else 0
+        
+        # 統一更新 UI 數據欄位
         self.info_set(self.tr('Activity Pts'), points)
-
-        # 體力也是異步讀取 (現在在活躍度之後設置，以符合用戶要求的順序)
-        self.get_stamina(frame=self._daily_snapshot1)
         self.info_set(self.tr('Consumed Waveplate'), current)
         
         # 清理截圖釋放內存

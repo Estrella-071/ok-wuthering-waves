@@ -14,7 +14,7 @@ from src.scene.WWScene import WWScene
 
 logger = Logger.get_logger(__name__)
 number_re = re.compile(r'(\d+)')
-stamina_re = re.compile(r'(\d+)/(\d+)')
+stamina_re = re.compile(r'(\d+)\s*/\s*(\d+)') # 增加對空格的相容性
 f_white_color = {
     'r': (235, 255),  # Red range
     'g': (235, 255),  # Green range
@@ -403,7 +403,6 @@ class BaseWWTask(BaseTask):
         keys = [
             'Current Task',
             'Task Log',
-            ' ',
             'Activity Pts',
             'Waveplate (Current)',
             'Waveplate Crystal (Backup)',
@@ -414,30 +413,32 @@ class BaseWWTask(BaseTask):
 
     def info_set_task(self, name, is_major=True):
         """
-        設置 UI 顯示邏輯：
-        1. Current Task: 顯示當前主任務（如：Daily Task）
-        2. Task Log: 顯示上一個已完成的主要任務 ✓
-        3. ' ' (Space): 顯示當前進行中的具體操作 ...
+        重構 UI 顯示邏輯 (03-14):
+        1. Current Task (Row 1): 顯示極為詳細的實時操作 (如 wait main, alt+click)
+        2. Task Log (Row 2): 顯示當前或上一個主任務狀態 (如 Daily Task ✓)
         """
+        # 第一行始終顯示最細節的操作狀態
+        self.info_set(self.tr('Current Task'), f"{self.tr(name)}...")
+        
         if is_major:
-            # 如果是主要任務切換，將舊的主要任務存入已完成紀錄
+            # 如果是主任務切換
             last_major = getattr(self, '_last_major_task', None)
             if last_major and last_major != name:
+                # 存檔舊主任務為已完成
                 self.info_set(self.tr('Task Log'), f"{self.tr(last_major)} ✓")
+            else:
+                # 或者是初次啟動/更新當前主任務
+                self.info_set(self.tr('Task Log'), f"{self.tr(name)}...")
             
-            # 更新當前主任務標題
-            self.info_set(self.tr('Current Task'), self.tr(name))
             self._last_major_task = name
-        
-        # 不論是否為主要任務，都在第三行（空格鍵名）顯示當前實時操作狀態
-        self.info_set(self.tr(' '), f"{self.tr(name)}...")
 
     def get_stamina(self, frame=None):
         if frame is None:
-            boxes = self.wait_ocr(0.49, 0.0, 0.92, 0.10, raise_if_not_found=False,
+            # 擴大區域到 (0.45, 0.0, 0.95, 0.15) 以應對不同解析度下的微移
+            boxes = self.wait_ocr(0.45, 0.0, 0.95, 0.15, raise_if_not_found=False,
                                   match=[number_re, stamina_re], log=self.debug)
         else:
-            boxes = self.ocr(0.49, 0.0, 0.92, 0.10, frame=frame, match=[number_re, stamina_re])
+            boxes = self.ocr(0.45, 0.0, 0.95, 0.15, frame=frame, match=[number_re, stamina_re])
             
         current = -1
         back_up = -1
