@@ -37,6 +37,9 @@ class SimulationTask(DomainTask):
             must_use = 0
         if config is None:
             config = self.config
+            
+        self.info_set('current task', self.tr('Farming Simulation Challenge'))
+        
         current, back_up, total = self.open_F2_book_and_get_stamina(opened=False)
         if total < self.stamina_once or total < must_use or (must_use == 0 and current < self.stamina_once):
             self.log_info(f'not enough stamina', notify=True)

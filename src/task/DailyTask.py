@@ -74,6 +74,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.go_to_tower(book_opened=True, wait=False)
         
         # 3. 核心優化：在點擊傳送後的黑屏加載間隙，並行分析快照
+        self.info_set('current task', self.tr('Analyzing daily snapshots in background...'))
         used_stamina, completed = self.analyze_daily_snapshot()
         
         # 4. 現在才等待傳送加載完成
@@ -85,9 +86,11 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         if condition1 or condition2:
             try:
                 if condition1:
+                    self.info_set('current task', self.tr('Farming Nightmare Nest'))
                     self.log_debug('Auto Farm all Nightmare Nest')
                     self.run_task_by_class(NightmareNestTask)
                 elif condition2 and self.config.get('Which to Farm', self.support_tasks[0]) != self.support_tasks[0]:
+                    self.info_set('current task', self.tr('Farming Nightmare Nest for Daily Echo'))
                     self.log_debug('Farm Nightmare Nest for Daily Echo')
                     self.get_task_by_class(NightmareNestTask).run_capture_mode()
             except TaskDisabledException:
@@ -100,6 +103,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         if not completed:
             if used_stamina < 180:
                 target = self.config.get('Which to Farm', self.support_tasks[0])
+                self.info_set('current task', self.tr(target))
                 if target == self.support_tasks[0]:
                     self.get_task_by_class(TacetTask).farm_tacet(daily=True, used_stamina=used_stamina,
                                                                  config=self.config)
@@ -181,17 +185,14 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             return
             
         if snapshot:
-            self.info_set_task('Capturing Snapshot 1', is_major=False)
+            # 極速連拍模式：不再等待 OCR，利用 UI 響應間隙完成動作
             self._daily_snapshot1 = self.frame.copy()
             # 點擊卷軸區域下滑
-            self.info_set_task('Scrolling Daily List', is_major=False)
-            self.click(0.961, 0.6, after_sleep=0.1) 
-            self.sleep(0.2) # 給予 UI 滾動一點反應時間
+            self.click(0.961, 0.6, after_sleep=0.05) 
+            # 任務完成：壓縮切換分頁動作到快照流程中（提前為 go_to_tower 做準備）
+            # 點擊「周期挑戰」分頁按鈕區域
+            self.click_relative(0.04, 0.42, after_sleep=0.05) 
             self._daily_snapshot2 = self.frame.copy()
-            
-            # 任務完成：準備切換分頁，但不在此時阻塞
-            self.info_set_task('Switching to Challenge Tab', is_major=False)
-            self.click_relative(0.04, 0.42, after_sleep=0.1) 
             return 
             
         # 脈衝點擊分頁直到 OCR 偵測到數字（取代 after_sleep=1.5 硬編碼）
@@ -250,6 +251,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             
         points = int(points_boxes[0].name) if points_boxes else 0
         self.info_set(self.tr('Activity Pts'), points)
+        self.info_set('current task', self.tr('Analysis completed'))
         
         # 清理截圖釋放內存
         del self._daily_snapshot1
@@ -267,7 +269,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         return points
 
     def claim_daily(self):
-        self.info_set('Current Task', 'claim daily')
+        self.info_set('current task', 'claim daily')
         self.ensure_main(time_out=5)
         self.open_daily()
 

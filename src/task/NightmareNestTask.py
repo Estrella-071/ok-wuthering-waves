@@ -33,6 +33,7 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
         self._capture_success = False
         WWOneTimeTask.run(self)
         self.ensure_main(time_out=30)
+        self.info_set('current task', self.tr('Farming all Nightmare Nests'))
         self._init_queue()
         self.log_info('opened gray_book_boss')
         while nest := self.get_nest_to_go():
@@ -44,6 +45,7 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
         self._capture_success = False
         WWOneTimeTask.run(self)
         self.ensure_main(time_out=30)
+        self.info_set('current task', self.tr('Farming Nightmare Nest for Daily Echo'))
         self._init_queue()
         self.log_info('opened gray_book_boss')
         while nest := self.get_nest_to_go():

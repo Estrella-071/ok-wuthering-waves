@@ -37,12 +37,27 @@ class ForgeryTask(DomainTask):
             must_use = 0
         if config is None:
             config = self.config
+            
+        self.info_set('current task', self.tr('Farming Forgery Challenge'))
+        
         current, back_up, total = self.open_F2_book_and_get_stamina(opened=False)
         if total < self.stamina_once or total < must_use or (must_use == 0 and current < self.stamina_once):
             self.log_info(f'not enough stamina', notify=True)
             self.back()
             return
         self.teleport_into_domain(config.get('Which Forgery Challenge to Farm', 1), daily)
+        self.wait_click_travel()
+        # 並行優化：在加載期間分析體力
+        if hasattr(self, '_stamina_snapshot'):
+            self.get_stamina(frame=self._stamina_snapshot)
+            del self._stamina_snapshot
+        self.wait_in_team_and_world(time_out=self.teleport_timeout)
+        self.walk_until_f(time_out=2)
+        self.pick_f()
+        self.combat_once()
+        self.sleep(3)
+        self.walk_to_treasure()
+        self.pick_f(handle_claim=False)
         self.farm_in_domain(must_use=must_use)
 
     def purification_material(self):

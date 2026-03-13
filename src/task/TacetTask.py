@@ -52,6 +52,7 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
         else:
             must_use = 0
         self.info_incr('used stamina', 0)
+        self.info_set('current task', self.tr('Farming Tacet Suppression'))
         while True:
             gray_book_boss = self.openF2Book("gray_book_boss", opened=False)
             
