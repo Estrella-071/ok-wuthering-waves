@@ -14,7 +14,7 @@ from src.scene.WWScene import WWScene
 
 logger = Logger.get_logger(__name__)
 number_re = re.compile(r'(\d+)')
-stamina_re = re.compile(r'(\d+)\s*/\s*(\d+)') # 增加對空格的相容性
+stamina_re = re.compile(r'(\d+)/(\d+)')
 f_white_color = {
     'r': (235, 255),  # Red range
     'g': (235, 255),  # Green range
@@ -398,47 +398,54 @@ class BaseWWTask(BaseTask):
 
     def ui_init(self):
         """
-        初始化 UI 資訊板，確保所有鍵名按順序排列
+        初始化 UI 資訊板，僅保留穩固的日誌架構。
+        具體數值（如體力、活躍度）在獲得數據前不予顯示。
         """
         keys = [
             'Current Task',
-            'Task Log',
-            'Activity Pts',
-            'Waveplate (Current)',
-            'Waveplate Crystal (Backup)',
-            'Consumed Waveplate'
+            'Task Log 1',
+            'Task Log 2'
         ]
         for k in keys:
             self.info_set(self.tr(k), "")
 
     def info_set_task(self, name, is_major=True):
         """
-        重構 UI 顯示邏輯 (03-14):
-        1. Current Task (Row 1): 顯示極為詳細的實時操作 (如 wait main, alt+click)
-        2. Task Log (Row 2): 顯示當前或上一個主任務狀態 (如 Daily Task ✓)
+        設置 UI 顯示邏輯：
+        1. Current Task: 顯示當前即時動作（函數名或操作）
+        2. Task Log 1: 顯示上一條操作日誌
+        3. Task Log 2: 顯示再上一條，實現日誌物理隊列滾動效果
+        註：這裡不再使用 is_major 屏蔽，而是將所有動作紀錄入日誌隊列，
+        但主要任務與次要動作在日誌流水中併行呈現。
         """
-        # 第一行始終顯示最細節的操作狀態
-        self.info_set(self.tr('Current Task'), f"{self.tr(name)}...")
+        # 獲取當前存在的日誌內容，實現物理滾動 (3 -> 2 -> 1)
+        log1 = self.get_info(self.tr('Task Log 1'))
         
+        # 如果當前有內容，則向下滾動（用戶要求 3 頂 2，這裡映射到 Log 1 和 Log 2）
+        if log1:
+            self.info_set(self.tr('Task Log 2'), log1)
+        
+        # 將「舊的第一行」移動到日誌流水中
+        current_op = self.get_info(self.tr('Current Task'))
+        if current_op:
+            self.info_set(self.tr('Task Log 1'), current_op)
+        
+        # 第一行顯示當前最新動作
+        op_suffix = "..."
         if is_major:
-            # 如果是主任務切換
-            last_major = getattr(self, '_last_major_task', None)
-            if last_major and last_major != name:
-                # 存檔舊主任務為已完成
-                self.info_set(self.tr('Task Log'), f"{self.tr(last_major)} ✓")
-            else:
-                # 或者是初次啟動/更新當前主任務
-                self.info_set(self.tr('Task Log'), f"{self.tr(name)}...")
+            # 主要任務加後綴區分
+            op_name = f"{self.tr(name)}"
+        else:
+            op_name = f"{self.tr(name)}"
             
-            self._last_major_task = name
+        self.info_set(self.tr('Current Task'), f"{op_name}{op_suffix}")
 
     def get_stamina(self, frame=None):
         if frame is None:
-            # 擴大區域到 (0.45, 0.0, 0.95, 0.15) 以應對不同解析度下的微移
-            boxes = self.wait_ocr(0.45, 0.0, 0.95, 0.15, raise_if_not_found=False,
+            boxes = self.wait_ocr(0.49, 0.0, 0.92, 0.10, raise_if_not_found=False,
                                   match=[number_re, stamina_re], log=self.debug)
         else:
-            boxes = self.ocr(0.45, 0.0, 0.95, 0.15, frame=frame, match=[number_re, stamina_re])
+            boxes = self.ocr(0.49, 0.0, 0.92, 0.10, frame=frame, match=[number_re, stamina_re])
             
         current = -1
         back_up = -1
