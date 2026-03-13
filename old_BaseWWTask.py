@@ -396,6 +396,50 @@ class BaseWWTask(BaseTask):
         else:
             return True
 
+    def ui_init(self):
+        """
+        初始化 UI 資訊板，僅保留穩固的日誌架構。
+        具體數值（如體力、活躍度）在獲得數據前不予顯示。
+        """
+        keys = [
+            'Current Task',
+            'Task Log 1',
+            'Task Log 2'
+        ]
+        for k in keys:
+            self.info_set(self.tr(k), "")
+
+    def info_set_task(self, name, is_major=True):
+        """
+        設置 UI 顯示邏輯：
+        1. Current Task: 顯示當前即時動作（函數名或操作）
+        2. Task Log 1: 顯示上一條操作日誌
+        3. Task Log 2: 顯示再上一條，實現日誌物理隊列滾動效果
+        註：這裡不再使用 is_major 屏蔽，而是將所有動作紀錄入日誌隊列，
+        但主要任務與次要動作在日誌流水中併行呈現。
+        """
+        # 獲取當前存在的日誌內容，實現物理滾動 (3 -> 2 -> 1)
+        log1 = self.get_info(self.tr('Task Log 1'))
+        
+        # 如果當前有內容，則向下滾動（用戶要求 3 頂 2，這裡映射到 Log 1 和 Log 2）
+        if log1:
+            self.info_set(self.tr('Task Log 2'), log1)
+        
+        # 將「舊的第一行」移動到日誌流水中
+        current_op = self.get_info(self.tr('Current Task'))
+        if current_op:
+            self.info_set(self.tr('Task Log 1'), current_op)
+        
+        # 第一行顯示當前最新動作
+        op_suffix = "..."
+        if is_major:
+            # 主要任務加後綴區分
+            op_name = f"{self.tr(name)}"
+        else:
+            op_name = f"{self.tr(name)}"
+            
+        self.info_set(self.tr('Current Task'), f"{op_name}{op_suffix}")
+
     def get_stamina(self, frame=None):
         if frame is None:
             boxes = self.wait_ocr(0.49, 0.0, 0.92, 0.10, raise_if_not_found=False,
@@ -403,20 +447,25 @@ class BaseWWTask(BaseTask):
         else:
             boxes = self.ocr(0.49, 0.0, 0.92, 0.10, frame=frame, match=[number_re, stamina_re])
             
-        if not boxes:
+        current = -1
+        back_up = -1
+        
+        if boxes:
+            for box in boxes:
+                if match := stamina_re.search(box.name):
+                    current = int(match.group(1))
+                elif match := number_re.search(box.name):
+                    back_up = int(match.group(1))
+        else:
             if frame is None:
                 self.screenshot('stamina_error')
-            return -1, -1, -1
-        current = 0
-        back_up = 0
-        for box in boxes:
-            if match := stamina_re.search(box.name):
-                current = int(match.group(1))
-            elif match := number_re.search(box.name):
-                back_up = int(match.group(1))
-        self.info_set(self.tr('Waveplate (Current)'), current)
-        self.info_set(self.tr('Waveplate Crystal (Backup)'), back_up)
-        return current, back_up, current + back_up
+            logger.warning("get_stamina: No boxes found")
+
+        # 強制更新 UI，避免保持為 ui_init 的空白狀態
+        self.info_set(self.tr('Waveplate (Current)'), current if current != -1 else "?")
+        self.info_set(self.tr('Waveplate Crystal (Backup)'), back_up if back_up != -1 else "?")
+        
+        return current, back_up, (current + back_up) if (current != -1 and back_up != -1) else -1
 
     def use_stamina(self, once, must_use=0):
         self.sleep(1)
@@ -679,13 +728,13 @@ class BaseWWTask(BaseTask):
         return success
 
     def ensure_main(self, esc=True, time_out=30):
-        self.info_set('current task', f'wait main esc={esc}')
+        self.info_set_task(f'wait main esc={esc}', is_major=False)
         if not self._logged_in:
             time_out = 180
         if not self.wait_until(lambda: self.is_main(esc=esc), time_out=time_out, raise_if_not_found=False):
             raise Exception('Please start in game world and in team!')
         self.sleep(0.5)
-        self.info_set('current task', f'in main esc={esc}')
+        self.info_set_task(f'in main esc={esc}', is_major=False)
 
     def is_main(self, esc=True):
         if self.in_team_and_world():

@@ -721,25 +721,16 @@ msgid "Farm"
 msgstr ""
 
 msgid "Waveplate Crystal (Backup)"
-msgstr "결정 단체 (예비)"
+msgstr "결정 단체 (備用)"
 
 msgid "Waveplate (Current)"
-msgstr "결정 용매 (현재)"
+msgstr "結晶玻片 (當前)"
 
 msgid "Consumed Waveplate"
-msgstr "사용된 결정 용매"
+msgstr "已消耗結晶玻片"
 
 msgid "Activity Pts"
-msgstr "활성도 포인트"
+msgstr "活躍度點數"
 
 msgid "Analyzing daily snapshots in background..."
 msgstr "백그라운드에서 일일 작업 스냅샷 분석 중..."
-
-msgid "Current Task"
-msgstr "현재 작업"
-
-msgid "Task Log 1"
-msgstr "로그"
-
-msgid "Task Log 2"
-msgstr "로그"

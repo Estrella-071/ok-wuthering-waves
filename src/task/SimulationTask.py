@@ -48,7 +48,7 @@ class SimulationTask(DomainTask):
 
     def teleport_into_domain(self, selection):
         self.click_relative(0.18, 0.28, after_sleep=1)
-        self.info_set_task(self.tr('Simulation Challenge'), is_major=True)
+        self.info_set('Teleport to Simulation Challenge', selection)
         self.click_relative(0.980, 0.875, after_sleep=1)
         btns = self.find_feature('boss_proceed', box=self.box_of_screen(0.94, 0.26, 0.97, 0.88), threshold=0.8)
         if btns is None:
