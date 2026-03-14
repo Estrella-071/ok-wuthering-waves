@@ -347,14 +347,15 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.back(after_sleep=0.5)
 
     def claim_mail(self):
+        self.log_info(self.tr('Claim mail'))
         self.info_set('current task', 'claim mail')
         self.info_set('Log', self.tr('Open ESC menu'))
         
-        # 視覺變動檢測：開啟選單直到離開大世界狀態
+        # 改為單次發送 ESC 並配合精讀檢測，取代脈衝重複發送
+        self.back(after_sleep=0.8)
         self.wait_until(
             lambda: not self.in_team_and_world(),
-            pre_action=lambda: self.back(after_sleep=0.8), # 增加等待時間給動畫，避免二次脈衝關閉選單
-            time_out=8, settle_time=1.0 # 降低重試頻率以防止 toggle 類按鍵重複觸發
+            time_out=5, settle_time=0.2
         )
         
         self.log_info(self.tr('Open mail'))
