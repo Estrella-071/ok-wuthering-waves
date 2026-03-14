@@ -170,24 +170,17 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             self.log_error('can not battle pass, maybe ended')
         else:
             self.log_info(self.tr('Claim task reward'))
-            # 使用 wait_until 確保頁簽切換成功
-            self.wait_until(
-                lambda: self.ocr(0.1, 0.25, 0.4, 0.45, match=re.compile(r'\d+')),
-                pre_action=lambda: self.click(0.04, 0.35, after_sleep=0.3),
-                time_out=5, settle_time=0.2, raise_if_not_found=False
-            )
-            self.wait_ocr(0.1, 0.1, 0.4, 0.3, match=re.compile(r'\d+'),
-                          post_action=lambda: self.click(0.68, 0.91, after_sleep=0.1), settle_time=0.1, time_out=3,
-                          raise_if_not_found=False)
+            # 對齊上游座標 0.04, 0.3 與等待
+            self.click(0.04, 0.3, after_sleep=1)
+            self.click(0.68, 0.91, after_sleep=3)
+            
             self.log_info(self.tr('Claim season reward'))
-            # 使用 wait_until 確保頁簽切換成功
-            self.wait_until(
-                lambda: self.ocr(0.1, 0.1, 0.4, 0.25, match=re.compile(r'\d+')),
-                pre_action=lambda: self.click(0.04, 0.17, after_sleep=0.3),
-                time_out=5, settle_time=0.2, raise_if_not_found=False
-            )
+            # 對齊上游座標 0.04, 0.17 與等待
+            self.click(0.04, 0.17, after_sleep=2)
+            self.click(0.68, 0.91, after_sleep=2)
+            
             self.wait_ocr(0.1, 0.1, 0.4, 0.3, match=re.compile(r'\d+'),
-                          post_action=lambda: self.click(0.68, 0.91, after_sleep=0.1), settle_time=0.1, time_out=3,
+                          post_action=lambda: self.click(0.68, 0.91, after_sleep=1), settle_time=1,
                           raise_if_not_found=False)
         self.ensure_main()
 
@@ -343,26 +336,16 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.info_set('current task', 'claim mail')
         self.info_set('Log', self.tr('Open ESC menu'))
         
-        # 脈衝單次 ESC 並監控頭像消失（確保選單開啟）
-        # 這是最穩定的判定方式，不依賴可能失敗的 OCR 檢測選單圖示
-        self.back(after_sleep=0.8)
-        if not self.wait_until(lambda: not self.in_team_and_world(), time_out=5, settle_time=0.4, raise_if_not_found=False):
-            self.log_debug('First ESC pulse missed, retrying...')
-            self.back(after_sleep=0.8)
-            self.wait_until(lambda: not self.in_team_and_world(), time_out=5, settle_time=0.4)
+        # 完全還原上游邏輯：發送 ESC 並使用足夠的等待時間
+        self.back(after_sleep=1.5)
         
         self.log_info(self.tr('Open mail'))
         self.info_set('Log', self.tr('Open mail'))
-        # 廣域 OCR 確認點擊郵件，參照座標 0.64, 0.95
-        # 增加識別成功後的等待，確保 UI 已加載完畢可被點擊
-        self.wait_ocr(0.5, 0.9, 0.8, 1.0, match=re.compile(r'.*郵.*|.*Mail.*'), 
-                      post_action=lambda: self.click(0.64, 0.95, after_sleep=1.5),
-                      time_out=5, raise_if_not_found=False)
+        # 嚴格對齊上游座標 (0.64, 0.95) 與等待時間
+        self.click(0.64, 0.95, after_sleep=1.5)
         
         self.log_info(self.tr('Claim mail'))
         self.info_set('Log', self.tr('Claim mail'))
-        # 檢測「全部領取」按鈕出現後立即點擊
-        self.wait_ocr(0.05, 0.85, 0.25, 0.95, match=re.compile(r'.*領.*|.*Claim.*'), 
-                      post_action=lambda: self.click(0.14, 0.9, after_sleep=0.5),
-                      time_out=5, settle_time=0.1, raise_if_not_found=False)
+        # 嚴格對齊上游座標 (0.14, 0.9) 與等待時間
+        self.click(0.14, 0.9, after_sleep=1.5)
         self.ensure_main(time_out=10)
