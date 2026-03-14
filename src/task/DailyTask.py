@@ -163,16 +163,14 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.log_info(self.tr('Open Pioneers Podcast'))
         self.ensure_main(time_out=5)
         
-        # 極速開啟：直到離開大世界
+        # 改為單次開啟並等待介面加載
+        self.send_key_down('alt')
+        self.click_relative(0.86, 0.05, down_time=0.01)
+        self.send_key_up('alt')
+        
         self.wait_until(
             lambda: not self.in_team_and_world(),
-            pre_action=lambda: (
-                self.send_key_down('alt'),
-                self.click_relative(0.86, 0.05, down_time=0.01),
-                self.send_key_up('alt'),
-                self.sleep(0.1)
-            ),
-            time_out=5, settle_time=0.1
+            time_out=5, settle_time=0.2
         )
 
         if not self.wait_ocr(0.12, 0.13, 0.35, 0.25, match=re.compile(r'\d+'), settle_time=0.1, time_out=6, raise_if_not_found=False):
@@ -199,12 +197,8 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             )
             self.click(0.68, 0.91, after_sleep=0.2)
             
-        # 極速退出：連續 ESC 直到回到大世界
-        self.wait_until(
-            lambda: self.in_team_and_world(),
-            pre_action=lambda: self.back(after_sleep=0.2),
-            time_out=8, settle_time=0.1
-        )
+        # 安全退出：改回 ensure_main 處理，不使用連續 ESC 脈衝
+        self.ensure_main(time_out=15)
 
     def open_daily(self, snapshot=False):
         self.log_info('open_daily')
@@ -359,11 +353,11 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.info_set('current task', 'claim mail')
         self.info_set('Log', self.tr('Open ESC menu'))
         
-        # 極速開啟選單：直到狀態變更
+        # 改為單次發送 ESC 並等待狀態變更
+        self.back(after_sleep=0.2)
         self.wait_until(
             lambda: not self.in_team_and_world(),
-            pre_action=lambda: self.back(after_sleep=0.1),
-            time_out=5, settle_time=0.1
+            time_out=5, settle_time=0.2
         )
         
         self.log_info(self.tr('Open mail'))
@@ -381,9 +375,5 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         # 領取按鈕 (0.14, 0.9)
         self.click(0.14, 0.9, after_sleep=0.3) 
         
-        # 極速退出：連續 ESC 直到回到大世界 (關閉獲取介面、郵件介面、ESC選單)
-        self.wait_until(
-            lambda: self.in_team_and_world(),
-            pre_action=lambda: self.back(after_sleep=0.2),
-            time_out=10, settle_time=0.1
-        )
+        # 安全退出：改回 ensure_main 處理，關閉獲取介面、郵件介面與 ESC 選單
+        self.ensure_main(time_out=15)
