@@ -772,3 +772,48 @@ msgstr "活跃度点数"
 
 msgid "Analyzing daily snapshots in background..."
 msgstr "正在背景分析每日任务快照..."
+
+msgid "Arrived at destination"
+msgstr "已抵达目的地"
+
+msgid "Arrived at Tower of Adversity"
+msgstr "已抵达深塔"
+
+msgid "Claiming daily rewards"
+msgstr "正在领取每日奖励"
+
+msgid "Daily one-stop completed"
+msgstr "每日一条龙完成"
+
+msgid "Start combat"
+msgstr "开始战斗"
+
+msgid "Claim reward"
+msgstr "领取奖励"
+
+msgid "Arrived at Forgery Challenge"
+msgstr "已抵达凝素领域"
+
+msgid "Arrived at Simulation Challenge"
+msgstr "已抵达模拟领域"
+
+msgid "Arrived at Nightmare Nest"
+msgstr "已抵达梦魇巢穴"
+
+msgid "Open Pioneers Podcast"
+msgstr "打开先约电台"
+
+msgid "Claim task reward"
+msgstr "领取任务奖励"
+
+msgid "Claim season reward"
+msgstr "领取赛季奖励"
+
+msgid "Open ESC menu"
+msgstr "打开 ESC 菜单"
+
+msgid "Open mail"
+msgstr "打开邮件"
+
+msgid "Claim mail"
+msgstr "领取邮件"

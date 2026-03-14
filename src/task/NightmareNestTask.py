@@ -70,23 +70,23 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
 
     def combat_nest(self, nest):
         self.click(nest, after_sleep=2)
-        self.info_set('current task', self.tr('Teleporting to Nightmare Nest'))
         self.wait_click_travel()
         self.wait_in_team_and_world(time_out=30, raise_if_not_found=False)
-        self.info_set('current task', self.tr('Arrived at Nightmare Nest'))
+        self.log_info(self.tr('Arrived at Nightmare Nest'))
         self.sleep(1)
         while self.find_f_with_text():
             self.send_key('f', after_sleep=1)
             self.wait_in_team_and_world(time_out=40, raise_if_not_found=False)
         self.sleep(2)
         self.run_until(self.in_combat, 'w', time_out=10, running=False, target=True)
-        self.info_set('current task', self.tr('Starting Battle'))
+        self.log_info(self.tr('Start combat'))
         self.combat_once()
         if self._capture_mode:
             if self._capture_success or self.wait_until(self.has_echo_notification, time_out=3):
                 self.log_info("Captured echo during combat, skipping search.")
                 return
         else:
+            self.log_info(self.tr('Claim reward'))
             self.sleep(3)
         if not self.walk_find_echo(time_out=5, backward_time=2.5):
             dropped = self.yolo_find_echo(turn=True, use_color=False, time_out=30)[0]
@@ -94,7 +94,6 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
         else:
             dropped = True
             self.log_info(f'farm echo walk find true')
-            self.info_set('current task', self.tr('Claiming Reward'))
         self._capture_success = dropped
         self.sleep(1)
 

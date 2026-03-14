@@ -161,27 +161,41 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
     def claim_battle_pass(self):
         self.log_info(self.tr('Open Pioneers Podcast'))
         self.ensure_main(time_out=5)
-        self.send_key_down('alt')
-        self.sleep(0.1)
-        self.click_relative(0.86, 0.05, down_time=0.05)
-        self.sleep(0.05)
-        self.send_key_up('alt')
+        
+        # 視覺變動檢測：開啟 Podcast 直到離開大世界狀態
+        self.wait_until(
+            lambda: not self.in_team_and_world(),
+            pre_action=lambda: (
+                self.send_key_down('alt'),
+                self.click_relative(0.86, 0.05, down_time=0.05),
+                self.send_key_up('alt'),
+                self.sleep(0.2)
+            ),
+            time_out=5, settle_time=0.5
+        )
+
         if not self.wait_ocr(0.12, 0.13, 0.35, 0.25, match=re.compile(r'\d+'), settle_time=0.1, time_out=6, raise_if_not_found=False):
             self.log_error('can not battle pass, maybe ended')
         else:
             self.log_info(self.tr('Claim task reward'))
-            # 對齊上游座標 0.04, 0.3 與等待
-            self.click(0.04, 0.3, after_sleep=1)
-            self.click(0.68, 0.91, after_sleep=3)
-            
+            # 視覺變動檢測：切換頁簽直到內容加載
+            self.wait_until(
+                lambda: self.ocr(0.1, 0.1, 0.4, 0.3, match=re.compile(r'\d+')),
+                pre_action=lambda: self.click(0.04, 0.35, after_sleep=0.2),
+                time_out=5, settle_time=0.2
+            )
+            # 領取按鈕 (不阻塞，因為後續有 ensure_main 處理彈窗)
+            self.click(0.68, 0.91, after_sleep=0.5)
+
             self.log_info(self.tr('Claim season reward'))
-            # 對齊上游座標 0.04, 0.17 與等待
-            self.click(0.04, 0.17, after_sleep=2)
-            self.click(0.68, 0.91, after_sleep=2)
+            # 視覺變動檢測：切換頁簽直到內容加載
+            self.wait_until(
+                lambda: self.ocr(0.1, 0.1, 0.4, 0.3, match=re.compile(r'\d+')),
+                pre_action=lambda: self.click(0.04, 0.17, after_sleep=0.2),
+                time_out=5, settle_time=0.2
+            )
+            self.click(0.68, 0.91, after_sleep=0.5)
             
-            self.wait_ocr(0.1, 0.1, 0.4, 0.3, match=re.compile(r'\d+'),
-                          post_action=lambda: self.click(0.68, 0.91, after_sleep=1), settle_time=1,
-                          raise_if_not_found=False)
         self.ensure_main()
 
     def open_daily(self, snapshot=False):
@@ -336,16 +350,25 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.info_set('current task', 'claim mail')
         self.info_set('Log', self.tr('Open ESC menu'))
         
-        # 完全還原上游邏輯：發送 ESC 並使用足夠的等待時間
-        self.back(after_sleep=1.5)
+        # 視覺變動檢測：開啟選單直到離開大世界狀態
+        self.wait_until(
+            lambda: not self.in_team_and_world(),
+            pre_action=lambda: self.back(after_sleep=0.2),
+            time_out=5, settle_time=0.5
+        )
         
         self.log_info(self.tr('Open mail'))
         self.info_set('Log', self.tr('Open mail'))
-        # 嚴格對齊上游座標 (0.64, 0.95) 與等待時間
-        self.click(0.64, 0.95, after_sleep=1.5)
+        # 視覺變動檢測：點擊郵件直到頁面標題出現
+        # 區域 0.0, 0.0, 0.2, 0.2 通常是標題區域
+        self.wait_until(
+            lambda: self.ocr(0.0, 0.0, 0.2, 0.2, match=re.compile(r'(郵件|Mail)')),
+            pre_action=lambda: self.click(0.64, 0.95, after_sleep=0.5), # 座標 (0.64, 0.95)
+            time_out=8, settle_time=0.5, raise_if_not_found=False
+        )
         
         self.log_info(self.tr('Claim mail'))
         self.info_set('Log', self.tr('Claim mail'))
-        # 嚴格對齊上游座標 (0.14, 0.9) 與等待時間
-        self.click(0.14, 0.9, after_sleep=1.5)
-        self.ensure_main(time_out=10)
+        # 點擊領取，此處點擊後會有較長的動畫與彈窗，使用較大的 sleep 確保穩定觸發，後續由 ensure_main 處理
+        self.click(0.14, 0.9, after_sleep=1.5) 
+        self.ensure_main(time_out=15)

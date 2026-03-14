@@ -30,8 +30,9 @@ class DomainTask(WWOneTimeTask, BaseCombatTask):
     def open_F2_book_and_get_stamina(self, opened=False):
         gray_book_boss = self.openF2Book('gray_book_boss', opened=opened)
         # 智慧切換分頁：脈衝點擊直至特徵出現 (OCR 體力區域)
+        # 使用 update_info=False 避免在循環檢查中產生大量冗餘日誌
         self.wait_until(
-            lambda: self.get_stamina()[0] != -1,
+            lambda: self.get_stamina(update_info=False)[0] != -1,
             pre_action=lambda: self.click_box(gray_book_boss, after_sleep=0.1),
             time_out=5, settle_time=0.1
         )

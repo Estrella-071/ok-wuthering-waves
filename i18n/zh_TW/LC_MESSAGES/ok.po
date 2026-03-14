@@ -486,12 +486,6 @@ msgstr "任務完成"
 msgid "Which Tacet Suppression to Farm"
 msgstr "刷第幾個無音區(F2列表)"
 
-msgid "back_up_stamina"
-msgstr "備用體力"
-
-msgid "current_stamina"
-msgstr "目前體力"
-
 msgid "used all stamina"
 msgstr "體力已用盡"
 
@@ -617,18 +611,6 @@ msgstr "活躍度"
 
 msgid "Claimed Activity Pts"
 msgstr "領取後活躍度"
-
-msgid "Waveplate (Current)"
-msgstr "結晶波片 (當前)"
-
-msgid "Waveplate Crystal (Backup)"
-msgstr "結晶單質 (備用)"
-
-msgid "Waveplate"
-msgstr "結晶波片"
-
-msgid "in main"
-msgstr ""
 
 msgid "Tower of Adversity"
 msgstr "逆境深塔"
@@ -758,6 +740,7 @@ msgstr "夢魘拔除"
 
 msgid "Tacet Discord Nest"
 msgstr "殘像聚落"
+
 msgid "Waveplate Crystal (Backup)"
 msgstr "結晶單質 (備用)"
 
@@ -773,50 +756,47 @@ msgstr "活躍度點數"
 msgid "Analyzing daily snapshots in background..."
 msgstr "正在背景分析每日任務快照..."
 
+msgid "Arrived at destination"
+msgstr "已抵達目的地"
+
 msgid "Arrived at Tower of Adversity"
-msgstr "已抵達逆境深塔"
+msgstr "已抵達深塔"
 
-msgid "Teleporting to Tacet Discord Nest"
-msgstr "正在傳送到無音區"
+msgid "Claiming daily rewards"
+msgstr "正在領取每日獎勵"
 
-msgid "Arrived at Tacet Discord Nest"
-msgstr "已抵達無音區"
+msgid "Daily one-stop completed"
+msgstr "每日一條龍完成"
 
-msgid "Teleporting to Forgery Challenge"
-msgstr "正在傳送到凝素領域"
+msgid "Start combat"
+msgstr "開始戰鬥"
+
+msgid "Claim reward"
+msgstr "領取獎勵"
 
 msgid "Arrived at Forgery Challenge"
 msgstr "已抵達凝素領域"
 
-msgid "Teleporting to Simulation Challenge"
-msgstr "正在傳送到模擬領域"
-
 msgid "Arrived at Simulation Challenge"
 msgstr "已抵達模擬領域"
-
-msgid "Teleporting to Nightmare Nest"
-msgstr "正在傳送到夢魘巢穴"
 
 msgid "Arrived at Nightmare Nest"
 msgstr "已抵達夢魘巢穴"
 
-msgid "Starting Battle"
-msgstr "開始戰鬥"
+msgid "Open Pioneers Podcast"
+msgstr "打開先約電台"
 
-msgid "Claiming Reward"
-msgstr "領取獎勵"
+msgid "Claim task reward"
+msgstr "領取任務獎勵"
 
-msgid "Opening ESC Menu"
-msgstr "打開 Esc 選單"
+msgid "Claim season reward"
+msgstr "領取賽季獎勵"
 
-msgid "Claiming Mail"
+msgid "Open ESC menu"
+msgstr "打開 ESC 選單"
+
+msgid "Open mail"
+msgstr "打開郵件"
+
+msgid "Claim mail"
 msgstr "領取郵件"
-
-msgid "Claiming Task"
-msgstr "領取任務"
-
-msgid "Claiming All Rewards"
-msgstr "領取所有獎勵"
-
-msgid "Daily Tasks Completed"
-msgstr "每日一條龍完成"

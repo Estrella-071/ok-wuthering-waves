@@ -721,16 +721,61 @@ msgid "Farm"
 msgstr ""
 
 msgid "Waveplate Crystal (Backup)"
-msgstr "결정 단체 (備用)"
+msgstr "결정 단체 (예비)"
 
 msgid "Waveplate (Current)"
-msgstr "結晶玻片 (當前)"
+msgstr "결정 (현재)"
 
 msgid "Consumed Waveplate"
-msgstr "已消耗結晶玻片"
+msgstr "소모된 결정"
 
 msgid "Activity Pts"
-msgstr "活躍度點數"
+msgstr "활약도 점수"
 
 msgid "Analyzing daily snapshots in background..."
 msgstr "백그라운드에서 일일 작업 스냅샷 분석 중..."
+
+msgid "Arrived at destination"
+msgstr "목적지에 도착했습니다"
+
+msgid "Arrived at Tower of Adversity"
+msgstr "역경의 탑에 도착했습니다"
+
+msgid "Claiming daily rewards"
+msgstr "일일 보상을 수령하고 있습니다"
+
+msgid "Daily one-stop completed"
+msgstr "일일 패키지 완료"
+
+msgid "Start combat"
+msgstr "전투 시작"
+
+msgid "Claim reward"
+msgstr "보상 수령"
+
+msgid "Arrived at Forgery Challenge"
+msgstr "응소 영역에 도착했습니다"
+
+msgid "Arrived at Simulation Challenge"
+msgstr "시뮬레이션 영역에 도착했습니다"
+
+msgid "Arrived at Nightmare Nest"
+msgstr "악몽의 둥지에 도착했습니다"
+
+msgid "Open Pioneers Podcast"
+msgstr "선약 라디오 열기"
+
+msgid "Claim task reward"
+msgstr "임무 보상 수령"
+
+msgid "Claim season reward"
+msgstr "시즌 보상 수령"
+
+msgid "Open ESC menu"
+msgstr "ESC 메뉴 열기"
+
+msgid "Open mail"
+msgstr "메일 열기"
+
+msgid "Claim mail"
+msgstr "메일 수령"

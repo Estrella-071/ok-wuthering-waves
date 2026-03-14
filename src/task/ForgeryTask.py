@@ -49,13 +49,16 @@ class ForgeryTask(DomainTask):
         self.wait_click_travel()
         # 並行優化：在加載期間分析體力
         if hasattr(self, '_stamina_snapshot'):
-            self.get_stamina(frame=self._stamina_snapshot)
+            self.get_stamina(frame=self._stamina_snapshot, update_info=False)
             del self._stamina_snapshot
         self.wait_in_team_and_world(time_out=self.teleport_timeout)
+        self.log_info(self.tr('Arrived at Forgery Challenge'))
         self.walk_until_f(time_out=2)
         self.pick_f()
+        self.log_info(self.tr('Start combat'))
         self.combat_once()
         self.sleep(3)
+        self.log_info(self.tr('Claim reward'))
         self.walk_to_treasure()
         self.pick_f(handle_claim=False)
         self.farm_in_domain(must_use=must_use)
@@ -76,8 +79,9 @@ class ForgeryTask(DomainTask):
 
     def teleport_into_domain(self, serial_number, daily=False):
         # 智慧切換分頁：脈衝點擊直到分頁數據加載完成 (由體力值檢測觸發)
+        # 使用 update_info=False 避免重複日誌
         self.wait_until(
-            lambda: self.get_stamina()[0] != -1,
+            lambda: self.get_stamina(update_info=False)[0] != -1,
             pre_action=lambda: self.click_relative(0.18, 0.16, after_sleep=0.1),
             time_out=5, settle_time=0.1, raise_if_not_found=False
         )
@@ -91,15 +95,13 @@ class ForgeryTask(DomainTask):
         self.wait_click_travel()
         # 並行優化：在加載期間分析體力
         if hasattr(self, '_stamina_snapshot'):
-            self.get_stamina(frame=self._stamina_snapshot)
+            self.get_stamina(frame=self._stamina_snapshot, update_info=False)
             del self._stamina_snapshot
         self.wait_in_team_and_world(time_out=self.teleport_timeout)
-        self.info_set('current task', self.tr('Arrived at Forgery Challenge'))
         self.walk_until_f(time_out=2)
         self.pick_f()
         self.wait_click_feature('gray_button_challenge', relative_x=4, raise_if_not_found=True,
                                 click_after_delay=0.1, threshold=0.6, after_sleep=0.1, time_out=20)
-        self.info_set('current task', self.tr('Starting Battle'))
         self.click_relative(0.93, 0.90, after_sleep=0.1)
         self.wait_in_team_and_world(time_out=self.teleport_timeout)
 

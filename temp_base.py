@@ -14,7 +14,7 @@ from src.scene.WWScene import WWScene
 
 logger = Logger.get_logger(__name__)
 number_re = re.compile(r'(\d+)')
-stamina_re = re.compile(r'(\d+)\s*/\s*(\d+)') # 支援含空格的 OCR 結果 (如 240 / 240)
+stamina_re = re.compile(r'(\d+)/(\d+)')
 f_white_color = {
     'r': (235, 255),  # Red range
     'g': (235, 255),  # Green range
@@ -396,41 +396,26 @@ class BaseWWTask(BaseTask):
         else:
             return True
 
-    def get_stamina(self, frame=None, update_info=True):
+    def get_stamina(self, frame=None):
         if frame is None:
-            # 正常模式：使用 match 參數過濾
             boxes = self.wait_ocr(0.49, 0.0, 0.92, 0.10, raise_if_not_found=False,
                                   match=[number_re, stamina_re], log=self.debug)
         else:
-            # 背景分析模式：移除 match 參數，手動解析，避免框架正則匹配導致的負數 Box 錯誤
-            boxes = self.ocr(0.49, 0.0, 0.92, 0.10, frame=frame)
-
+            boxes = self.ocr(0.49, 0.0, 0.92, 0.10, frame=frame, match=[number_re, stamina_re])
+            
         if not boxes:
             if frame is None:
                 self.screenshot('stamina_error')
             return -1, -1, -1
-
         current = 0
         back_up = 0
         for box in boxes:
-            name = box.name.replace(' ', '')
-            # 優先處理體力格式 (x/y)
-            if match := stamina_re.search(name):
-                val = int(match.group(1))
-                # 數據鎖定：優先取分母包含 240 的項
-                if current == 0 or '/240' in name:
-                    current = val
-            # 處理備用體力 (單個數字)
-            elif match := number_re.search(name):
-                val = int(match.group(1))
-                # 排除像世界等級 8 這種過小的雜訊
-                if val > 10 and back_up == 0:
-                    back_up = val
-                    
-        if update_info:
-            self.info_set('Waveplate (Current)', current if current > 0 else -1)
-            self.info_set('Waveplate Crystal (Backup)', back_up if back_up > 0 else -1)
-            self.info_set('Log', f"{self.tr('Waveplate (Current)')}: {current}/{back_up}")
+            if match := stamina_re.search(box.name):
+                current = int(match.group(1))
+            elif match := number_re.search(box.name):
+                back_up = int(match.group(1))
+        self.info_set(self.tr('Waveplate (Current)'), current)
+        self.info_set(self.tr('Waveplate Crystal (Backup)'), back_up)
         return current, back_up, current + back_up
 
     def use_stamina(self, once, must_use=0):
@@ -451,29 +436,15 @@ class BaseWWTask(BaseTask):
             logger.info(f"使用单倍体力")
         self.click(x, y, after_sleep=0.5)
         if self.wait_feature('gem_add_stamina', horizontal_variance=0.4, vertical_variance=0.05,
-                             time_out=1):  # 看是否需要使用備用體力
-            self.click(0.70, 0.71, after_sleep=0.5)  # 點擊確認
+                             time_out=1):  # 看是否需要使用备用体力
+            self.click(0.70, 0.71, after_sleep=0.5)  # 点击确认
             self.click(0.70, 0.71, after_sleep=1)
             self.back(after_sleep=0.5)
             self.click(x, y, after_sleep=0.5)
 
-        # 即時更新 UI 數值，解決用戶回報需等待 OCR 的問題
-        if current >= used:
-            current -= used
-        else:
-            # 如果目前體力不足，優先扣除目前體力到 0，其餘扣除備用
-            remaining = used - (current if current > 0 else 0)
-            current = 0
-            back_up = max(0, back_up - remaining)
-        
+        current -= used
         must_use -= used
-        total = current + back_up
-        
-        # 立即更新看板 UI
-        self.info_set('Waveplate (Current)', current)
-        self.info_set('Waveplate Crystal (Backup)', back_up)
-        self.log_info(f"Waveplate Used: {used}, Current: {current}, Backup: {back_up}")
-        self.info_set('Log', f"{self.tr('Claim reward')}: -{used} ({current}/{back_up})")
+        total -= used
         if total < once:
             logger.info(f"current stamina: {current} not enough to continue")
             can_continue = False
@@ -702,9 +673,8 @@ class BaseWWTask(BaseTask):
 
     def wait_in_team_and_world(self, time_out=10, raise_if_not_found=True, esc=False):
         success = self.wait_until(self.in_team_and_world, time_out=time_out, raise_if_not_found=raise_if_not_found,
-                                   post_action=lambda: self.back(after_sleep=2) if esc else None)
+                                  post_action=lambda: self.back(after_sleep=2) if esc else None)
         if success:
-            self.log_info(self.tr('Arrived at destination'))
             self.sleep(0.1)
         return success
 
@@ -1054,13 +1024,12 @@ class BaseWWTask(BaseTask):
             
         self.wait_feature(['fast_travel_custom', 'gray_teleport', 'remove_custom'], time_out=10, settle_time=0.1)
 
-    def click_proceed_with_stamina(self, btn, after_sleep=0.1, snapshot=True):
+    def click_proceed_with_stamina(self, btn, after_sleep=0.1):
         """
         點擊前往按鈕，並捕獲體力快照供後續非同步分析
         """
-        # 僅在 snapshot=True 且不存在已擷取快照時才擷取，避免與 open_daily 的精確快照衝突
-        if snapshot:
-            self._stamina_snapshot = self.frame.copy()
+        # 僅捕獲，不在此處執行耗時的 OCR
+        self._stamina_snapshot = self.frame.copy()
         self.click_box(btn, after_sleep=after_sleep)
 
     def change_time_to_night(self):

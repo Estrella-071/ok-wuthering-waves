@@ -57,27 +57,28 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             gray_book_boss = self.openF2Book("gray_book_boss", opened=False)
             
             # 智慧切換分頁：脈衝點擊直至體力數據加載
+            # 使用 update_info=False 減少循環中的日誌輸出
             self.wait_until(
-                lambda: self.get_stamina()[0] != -1,
+                lambda: self.get_stamina(update_info=False)[0] != -1,
                 pre_action=lambda: self.click_box(gray_book_boss, after_sleep=0.1),
                 time_out=5, settle_time=0.1
             )
-            current, back_up, total = self.get_stamina()
+            current, back_up, total = self.get_stamina(update_info=False)
             if current == -1:
                 # 嘗試點擊分頁圖標補救
                 self.wait_until(
-                    lambda: self.get_stamina()[0] != -1,
+                    lambda: self.get_stamina(update_info=False)[0] != -1,
                     pre_action=lambda: self.click_relative(0.04, 0.4, after_sleep=0.1),
                     time_out=3, settle_time=0.1
                 )
-                current, back_up, total = self.get_stamina()
+                current, back_up, total = self.get_stamina(update_info=False)
             if total < self.stamina_once:
                 return self.not_enough_stamina()
 
             index = config.get('Which Tacet Suppression to Farm', 1) - 1
             # 智慧選擇分頁：脈衝點擊左側圖標直到數據刷新
             self.wait_until(
-                lambda: self.get_stamina()[0] != -1, # 這裡以體力條出現為分頁加載標誌
+                lambda: self.get_stamina(update_info=False)[0] != -1, # 這裡以體力條出現為分頁加載標誌
                 pre_action=lambda: self.click_relative(0.18, 0.48, after_sleep=0.1),
                 time_out=5, settle_time=0.1
             )
@@ -88,11 +89,10 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             
             # 並行優化：在副本傳送加載期間分析剛才捕獲的體力快照
             if hasattr(self, '_stamina_snapshot'):
-                self.get_stamina(frame=self._stamina_snapshot)
+                self.get_stamina(frame=self._stamina_snapshot, update_info=False)
                 del self._stamina_snapshot
                 
             self.wait_in_team_and_world(time_out=120)
-            self.info_set('current task', self.tr('Arrived at Tacet Discord Nest'))
             if self.door_walk_method.get(index) is not None:
                 for method in self.door_walk_method.get(index):
                     self.send_key_down(method[0])
@@ -106,11 +106,11 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             else:
                 self.walk_until_f(time_out=4, backward_time=0, raise_if_not_found=True)
                 self.pick_f(handle_claim=False)
-            self.info_set('current task', self.tr('Starting Battle'))
+            self.log_info(self.tr('Start combat'))
             self.combat_once()
             self.sleep(3)
+            self.log_info(self.tr('Claim reward'))
             self.walk_to_treasure()
-            self.info_set('current task', self.tr('Claiming Reward'))
             self.pick_f(handle_claim=False)
             can_continue, used = self.use_stamina(once=self.stamina_once, must_use=must_use)
             self.info_incr('used stamina', used)
@@ -126,7 +126,6 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             self.back(after_sleep=1)
 
     def teleport_to_tacet(self, index):
-        self.info_set('current task', self.tr('Teleporting to Tacet Discord Nest'))
         self.info_set('Teleport to Tacet Suppression', index)
         if index >= self.total_number:
             raise IndexError(f'Index out of range, max is {self.total_number}')

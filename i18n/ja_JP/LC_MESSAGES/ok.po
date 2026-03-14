@@ -721,16 +721,61 @@ msgid "Farm"
 msgstr ""
 
 msgid "Waveplate Crystal (Backup)"
-msgstr "結晶波長精錬板 (備用)"
+msgstr "結晶単質 (予備)"
 
 msgid "Waveplate (Current)"
-msgstr "結晶玻片 (當前)"
+msgstr "結晶波片 (現在)"
 
 msgid "Consumed Waveplate"
-msgstr "已消耗結晶玻片"
+msgstr "結晶波片消費量"
 
 msgid "Activity Pts"
-msgstr "活躍度點數"
+msgstr "活躍度ポイント"
 
 msgid "Analyzing daily snapshots in background..."
 msgstr "デイリータスクのスクリーンショットをバックグラウンドで分析中..."
+
+msgid "Arrived at destination"
+msgstr "目的地に到着しました"
+
+msgid "Arrived at Tower of Adversity"
+msgstr "深塔に到着しました"
+
+msgid "Claiming daily rewards"
+msgstr "デイリー報酬を受け取っています"
+
+msgid "Daily one-stop completed"
+msgstr "デイリー一括処理完了"
+
+msgid "Start combat"
+msgstr "戦闘開始"
+
+msgid "Claim reward"
+msgstr "報酬を受け取る"
+
+msgid "Arrived at Forgery Challenge"
+msgstr "凝素領域に到着しました"
+
+msgid "Arrived at Simulation Challenge"
+msgstr "模擬領域に到着しました"
+
+msgid "Arrived at Nightmare Nest"
+msgstr "夢魘の巣に到着しました"
+
+msgid "Open Pioneers Podcast"
+msgstr "先約電台を開く"
+
+msgid "Claim task reward"
+msgstr "任務報酬を受け取る"
+
+msgid "Claim season reward"
+msgstr "シーズン報酬を受け取る"
+
+msgid "Open ESC menu"
+msgstr "ESC メニューを開く"
+
+msgid "Open mail"
+msgstr "メールを開く"
+
+msgid "Claim mail"
+msgstr "メールを受け取る"
