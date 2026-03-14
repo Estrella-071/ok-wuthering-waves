@@ -119,9 +119,10 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             self.log_info(self.tr('Claiming daily rewards'))
             self.claim_daily()
 
-        # 確保回到大世界後再進入郵件與電台流程，避免重複按 ESC
+        # 確保回到大世界後再進入郵件與電台流程
         self.ensure_main(time_out=15)
         self.claim_mail()
+        # 郵件領取後會回到大世界，接著執行電台
         self.claim_battle_pass()
         self.log_info(self.tr('Daily one-stop completed'), notify=True)
 
@@ -162,41 +163,48 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.log_info(self.tr('Open Pioneers Podcast'))
         self.ensure_main(time_out=5)
         
-        # 視覺變動檢測：開啟 Podcast 直到離開大世界狀態
+        # 極速開啟：直到離開大世界
         self.wait_until(
             lambda: not self.in_team_and_world(),
             pre_action=lambda: (
                 self.send_key_down('alt'),
-                self.click_relative(0.86, 0.05, down_time=0.05),
+                self.click_relative(0.86, 0.05, down_time=0.01),
                 self.send_key_up('alt'),
-                self.sleep(0.5) # 增加緩衝給 UI 響應
+                self.sleep(0.1)
             ),
-            time_out=5, settle_time=0.8
+            time_out=5, settle_time=0.1
         )
 
         if not self.wait_ocr(0.12, 0.13, 0.35, 0.25, match=re.compile(r'\d+'), settle_time=0.1, time_out=6, raise_if_not_found=False):
             self.log_error('can not battle pass, maybe ended')
         else:
             self.log_info(self.tr('Claim task reward'))
-            # 視覺變動檢測：切換頁簽直到內容加載
+            # 極速切換頁簽：直到內容加載
+            # 座標 0.04, 0.35
             self.wait_until(
                 lambda: self.ocr(0.1, 0.1, 0.4, 0.3, match=re.compile(r'\d+')),
-                pre_action=lambda: self.click(0.04, 0.35, after_sleep=0.2),
-                time_out=5, settle_time=0.2
+                pre_action=lambda: self.click(0.04, 0.35, after_sleep=0.1),
+                time_out=4, settle_time=0.1, raise_if_not_found=False
             )
-            # 領取按鈕 (不阻塞，因為後續有 ensure_main 處理彈窗)
-            self.click(0.68, 0.91, after_sleep=0.5)
+            # 領取按鈕 (0.68, 0.91) - 點擊直到進入獲取介面或按鈕狀態變更
+            self.click(0.68, 0.91, after_sleep=0.3)
 
             self.log_info(self.tr('Claim season reward'))
-            # 視覺變動檢測：切換頁簽直到內容加載
+            # 極速切換頁簽：直到內容加載
+            # 座標 0.04, 0.17
             self.wait_until(
                 lambda: self.ocr(0.1, 0.1, 0.4, 0.3, match=re.compile(r'\d+')),
-                pre_action=lambda: self.click(0.04, 0.17, after_sleep=0.2),
-                time_out=5, settle_time=0.2
+                pre_action=lambda: self.click(0.04, 0.17, after_sleep=0.1),
+                time_out=4, settle_time=0.1, raise_if_not_found=False
             )
-            self.click(0.68, 0.91, after_sleep=0.5)
+            self.click(0.68, 0.91, after_sleep=0.2)
             
-        self.ensure_main()
+        # 極速退出：連續 ESC 直到回到大世界
+        self.wait_until(
+            lambda: self.in_team_and_world(),
+            pre_action=lambda: self.back(after_sleep=0.2),
+            time_out=8, settle_time=0.1
+        )
 
     def open_daily(self, snapshot=False):
         self.log_info('open_daily')
@@ -351,25 +359,31 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.info_set('current task', 'claim mail')
         self.info_set('Log', self.tr('Open ESC menu'))
         
-        # 改為單次發送 ESC 並配合精讀檢測，取代脈衝重複發送
-        self.back(after_sleep=0.8)
+        # 極速開啟選單：直到狀態變更
         self.wait_until(
             lambda: not self.in_team_and_world(),
-            time_out=5, settle_time=0.2
+            pre_action=lambda: self.back(after_sleep=0.1),
+            time_out=5, settle_time=0.1
         )
         
         self.log_info(self.tr('Open mail'))
         self.info_set('Log', self.tr('Open mail'))
-        # 視覺變動檢測：點擊郵件直到頁面標題出現
-        # 區域 0.0, 0.0, 0.2, 0.2 通常是標題區域
+        # 極速點擊郵件：直到標題區域 OCR 檢測到關鍵字
+        # 區域 0.0, 0.0, 0.3, 0.15 為標題區
         self.wait_until(
-            lambda: self.ocr(0.0, 0.0, 0.2, 0.2, match=re.compile(r'(郵件|Mail)')),
-            pre_action=lambda: self.click(0.64, 0.95, after_sleep=0.5), # 座標 (0.64, 0.95)
-            time_out=8, settle_time=0.5, raise_if_not_found=False
+            lambda: self.ocr(0.0, 0.0, 0.3, 0.15, match=re.compile(r'(郵件|Mail)')),
+            pre_action=lambda: self.click(0.64, 0.95, after_sleep=0.1),
+            time_out=5, settle_time=0.1, raise_if_not_found=False
         )
         
         self.log_info(self.tr('Claim mail'))
         self.info_set('Log', self.tr('Claim mail'))
-        # 點擊領取，此處點擊後會有較長的動畫與彈窗，使用較大的 sleep 確保穩定觸發，後續由 ensure_main 處理
-        self.click(0.14, 0.9, after_sleep=1.5) 
-        self.ensure_main(time_out=15)
+        # 領取按鈕 (0.14, 0.9)
+        self.click(0.14, 0.9, after_sleep=0.3) 
+        
+        # 極速退出：連續 ESC 直到回到大世界 (關閉獲取介面、郵件介面、ESC選單)
+        self.wait_until(
+            lambda: self.in_team_and_world(),
+            pre_action=lambda: self.back(after_sleep=0.2),
+            time_out=10, settle_time=0.1
+        )
