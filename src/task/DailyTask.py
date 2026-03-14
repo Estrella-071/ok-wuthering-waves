@@ -342,17 +342,22 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
     def claim_mail(self):
         self.info_set('current task', 'claim mail')
         self.info_set('Log', self.tr('Open ESC menu'))
-        # 使用 wait_until 取代死等，檢測郵件圖示 OCR "郵件" 或 "Mail" 確保選單已開啟
+
+        def menu_opened():
+            # 檢測郵件圖示區域是否穩定顯示，判斷選單是否已進入可用狀態
+            return self.ocr(0.6, 0.9, 0.7, 1.0)
+
+        # 使用 wait_until，pre_action 僅在選單未開啟時發送 ESC，防止重複開關（震盪）
         self.wait_until(
-            lambda: self.ocr(0.6, 0.9, 0.7, 1.0), 
-            pre_action=lambda: self.back(after_sleep=0.5), 
-            time_out=5, settle_time=0.3
+            lambda: menu_opened(), 
+            pre_action=lambda: self.back(after_sleep=1.0) if not menu_opened() else None, 
+            time_out=10, settle_time=0.5
         )
         
         self.log_info(self.tr('Open mail'))
         self.info_set('Log', self.tr('Open mail'))
-        # 參照上游座標 (0.64, 0.95)
-        self.click(0.64, 0.95, after_sleep=0.5) 
+        # 點擊郵件座標 (0.64, 0.95)
+        self.click(0.64, 0.95, after_sleep=0.8) 
         
         self.log_info(self.tr('Claim mail'))
         self.info_set('Log', self.tr('Claim mail'))
