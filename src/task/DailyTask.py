@@ -350,11 +350,11 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.info_set('current task', 'claim mail')
         self.info_set('Log', self.tr('Open ESC menu'))
         
-        # 視覺變動檢測：開啟選單直到離開大世界狀態
+        # 視覺變動檢測：開啟選單直到離開大世界狀態，每 1.5 秒重試一次
         self.wait_until(
             lambda: not self.in_team_and_world(),
             pre_action=lambda: self.back(after_sleep=0.2),
-            time_out=5, settle_time=0.5
+            time_out=10, settle_time=1.5
         )
         
         self.log_info(self.tr('Open mail'))
