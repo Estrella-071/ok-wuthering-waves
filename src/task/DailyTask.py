@@ -169,9 +169,9 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
                 self.send_key_down('alt'),
                 self.click_relative(0.86, 0.05, down_time=0.05),
                 self.send_key_up('alt'),
-                self.sleep(0.2)
+                self.sleep(0.5) # 增加緩衝給 UI 響應
             ),
-            time_out=5, settle_time=0.5
+            time_out=5, settle_time=0.8
         )
 
         if not self.wait_ocr(0.12, 0.13, 0.35, 0.25, match=re.compile(r'\d+'), settle_time=0.1, time_out=6, raise_if_not_found=False):
@@ -350,11 +350,11 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         self.info_set('current task', 'claim mail')
         self.info_set('Log', self.tr('Open ESC menu'))
         
-        # 視覺變動檢測：開啟選單直到離開大世界狀態，每 1.5 秒重試一次
+        # 視覺變動檢測：開啟選單直到離開大世界狀態
         self.wait_until(
             lambda: not self.in_team_and_world(),
-            pre_action=lambda: self.back(after_sleep=0.2),
-            time_out=10, settle_time=1.5
+            pre_action=lambda: self.back(after_sleep=0.8), # 增加等待時間給動畫，避免二次脈衝關閉選單
+            time_out=8, settle_time=1.0 # 降低重試頻率以防止 toggle 類按鍵重複觸發
         )
         
         self.log_info(self.tr('Open mail'))
