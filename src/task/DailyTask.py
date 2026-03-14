@@ -1,4 +1,5 @@
 import re
+import os
 
 from qfluentwidgets import FluentIcon
 
@@ -79,7 +80,6 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         
         # 4. 現在才等待傳送加載完成
         self.wait_in_team_and_world(time_out=120)
-        self.info_set('current task', self.tr('Arrived at Tower of Adversity'))
         self.wait_until(lambda: self.in_team()[0], time_out=5, settle_time=0.1)
 
         condition1 = self.config.get('Auto Farm all Nightmare Nest')
@@ -114,21 +114,16 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
                 else:
                     self.get_task_by_class(SimulationTask).farm_simulation(daily=True, used_stamina=used_stamina,
                                                                            config=self.config)
-                self.log_error("NightmareNestTask Failed", e)
-                self.ensure_main(time_out=180)
-            self.info_set('current task', self.tr('Claiming Daily Rewards'))
+                self.ensure_main()
+                self.sleep(1)
+            self.log_info(self.tr('Claiming daily rewards'))
             self.claim_daily()
 
-        # 任務完成後，或判定已全領取：此時才關閉書本回到大世界
-        self.back(after_sleep=0.1)
-        self.wait_until(lambda: self.in_team_and_world(), time_out=5, settle_time=0.1)
-
-        self.info_set('current task', self.tr('Opening Mail'))
+        # 確保回到大世界後再進入郵件與電台流程，避免重複按 ESC
+        self.ensure_main(time_out=15)
         self.claim_mail()
-        self.info_set('current task', self.tr('Opening Battle Pass'))
         self.claim_battle_pass()
-        self.info_set('current task', self.tr('Daily Tasks Completed'))
-        self.log_info('Task completed', notify=True)
+        self.log_info(self.tr('Daily one-stop completed'), notify=True)
 
     def go_to_tower(self, book_opened=False, wait=True):
         self.log_info(self.tr('Teleport to Tower of Adversity'))
@@ -140,10 +135,6 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             return
         
         # 點擊副本項
-<<<<<<< HEAD
-=======
-        self.info_set_task('Selecting Weekly/Tower Tab', is_major=True)
->>>>>>> f56624bdde0d2619a3aa7626d483acbd3d3e0201
         self.click_box(gray_book_weekly, after_sleep=1)
         
         # 點擊前往
@@ -155,7 +146,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         
         self.wait_until(
             lambda: not self.find_one(Labels.boss_proceed, box=self.box_of_screen(0.94, 0.3, 0.97, 0.41)),
-            pre_action=lambda: self.click_proceed_with_stamina(btn),
+            pre_action=lambda: self.click_proceed_with_stamina(btn, snapshot=False), # 禁止覆寫已有的精確快照
             time_out=5, settle_time=0.1
         )
 
@@ -164,10 +155,12 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         if wait:
             self.sleep(0.2)
             self.wait_in_team_and_world(time_out=120)
+            self.log_info(self.tr('Arrived at Tower of Adversity'))
             self.wait_until(lambda: self.in_team()[0], time_out=5, settle_time=0.1)
 
     def claim_battle_pass(self):
-        self.log_info('battle pass')
+        self.log_info(self.tr('Open Pioneers Podcast'))
+        self.ensure_main(time_out=5)
         self.send_key_down('alt')
         self.sleep(0.1)
         self.click_relative(0.86, 0.05, down_time=0.05)
@@ -176,11 +169,23 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         if not self.wait_ocr(0.12, 0.13, 0.35, 0.25, match=re.compile(r'\d+'), settle_time=0.1, time_out=6, raise_if_not_found=False):
             self.log_error('can not battle pass, maybe ended')
         else:
-            self.click(0.04, 0.3, after_sleep=0.1)
+            self.log_info(self.tr('Claim task reward'))
+            # 使用 wait_until 確保頁簽切換成功
+            self.wait_until(
+                lambda: self.ocr(0.1, 0.25, 0.4, 0.45, match=re.compile(r'\d+')),
+                pre_action=lambda: self.click(0.04, 0.35, after_sleep=0.3),
+                time_out=5, settle_time=0.2, raise_if_not_found=False
+            )
             self.wait_ocr(0.1, 0.1, 0.4, 0.3, match=re.compile(r'\d+'),
                           post_action=lambda: self.click(0.68, 0.91, after_sleep=0.1), settle_time=0.1, time_out=3,
                           raise_if_not_found=False)
-            self.click(0.04, 0.17, after_sleep=0.1)
+            self.log_info(self.tr('Claim season reward'))
+            # 使用 wait_until 確保頁簽切換成功
+            self.wait_until(
+                lambda: self.ocr(0.1, 0.1, 0.4, 0.25, match=re.compile(r'\d+')),
+                pre_action=lambda: self.click(0.04, 0.17, after_sleep=0.3),
+                time_out=5, settle_time=0.2, raise_if_not_found=False
+            )
             self.wait_ocr(0.1, 0.1, 0.4, 0.3, match=re.compile(r'\d+'),
                           post_action=lambda: self.click(0.68, 0.91, after_sleep=0.1), settle_time=0.1, time_out=3,
                           raise_if_not_found=False)
@@ -194,13 +199,33 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             return
             
         if snapshot:
-            # 極速連拍模式：僅採取兩張活躍度快照，體力從首張快照中提取
-            # 1. 第一張：包含頂部體力數據與活躍度前半部分
+            # 確保初始位在第一個頁簽（活躍度），避免數據解析出錯
+            self.click_relative(0.04, 0.16, after_sleep=0.4)
+            # 極速三連拍模式：利用 UI 響應間隙快速獲取所有數據截圖
+            # 1. 第一張：活躍度前半部分
             self._daily_snapshot1 = self.frame.copy()
             
             # 2. 模擬滾動並捕獲第二張：活躍度後半部分
-            self.click(0.961, 0.6, after_sleep=0.1) 
+            self.click(0.961, 0.6, after_sleep=0.04) 
             self._daily_snapshot2 = self.frame.copy()
+            
+            # 3. 切換至「周期挑戰」分頁並捕獲第三張：體力數據
+            # 座標 0.04, 0.28 是側邊欄第二個按鈕區域
+            self.click_relative(0.04, 0.28, after_sleep=0.2) 
+            # 確保體力數據渲染完成後才截圖，避免背景分析為 -1
+            self.wait_ocr(0.49, 0.0, 0.92, 0.10, match=stamina_re, time_out=2.5, raise_if_not_found=False)
+            self._stamina_snapshot = self.frame.copy()
+            
+            # 保存快照以供用戶調試
+            try:
+                import cv2
+                os.makedirs('logs/debug_snapshots', exist_ok=True)
+                cv2.imwrite('logs/debug_snapshots/daily_1.png', self._daily_snapshot1)
+                cv2.imwrite('logs/debug_snapshots/daily_2.png', self._daily_snapshot2)
+                cv2.imwrite('logs/debug_snapshots/stamina_3.png', self._stamina_snapshot)
+                self.log_info(self.tr('Snapshots saved to logs/debug_snapshots/ for debugging'))
+            except Exception as e:
+                self.log_error(f'Failed to save debug snapshots: {e}')
             return 
             
         # 脈衝點擊分頁直到 OCR 偵測到數字（取代 after_sleep=1.5 硬編碼）
@@ -229,55 +254,60 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
 
     def analyze_daily_snapshot(self):
         """
-        異步分析：在傳送加載期間處理快照
+        異步分析：在傳送加載期間處理三張快照
         """
-        if not hasattr(self, '_daily_snapshot1') or not hasattr(self, '_daily_snapshot2'):
+        if not hasattr(self, '_daily_snapshot1') or not hasattr(self, '_daily_snapshot2') or not hasattr(self, '_stamina_snapshot'):
             self.log_warning('Missing snapshots, falling back to synchronous reading')
             return self.open_daily()
             
         self.info_set('current task', self.tr('Analyzing snapshots in background...'))
         
-        # 1. 體力分析 (回歸使用第一張截圖，避開切換分頁造成的黑屏/延遲風險)
-        current_stamina, backup_stamina, _ = self.get_stamina(frame=self._daily_snapshot1)
+        # 1. 體力分析 (使用第三張分頁截圖)
+        # 背景分析結束後才統一更新 UI，減少中間過程的日誌冗餘
+        current_stamina, backup_stamina, _ = self.get_stamina(frame=self._stamina_snapshot, update_info=True)
         
         # 2. 活躍度進度分析 (已消耗體力)
-        progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'), frame=self._daily_snapshot1)
-        if not progress:
-            progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'(\d+)/180'), frame=self._daily_snapshot2)
+        # 移除 match 參數，手動解析以增加容錯
+        progress_boxes = self.ocr(0.1, 0.1, 0.5, 0.75, frame=self._daily_snapshot1)
+        if not progress_boxes:
+            progress_boxes = self.ocr(0.1, 0.1, 0.5, 0.75, frame=self._daily_snapshot2)
             
-        current = int(progress[0].name.split('/')[0]) if progress else 0
+        current = 0
+        progress_re = re.compile(r'(\d+)/180')
+        for box in progress_boxes:
+            name = box.name.replace(' ', '')
+            if match := progress_re.search(name):
+                current = int(match.group(1))
+                logger.info(f"Detected Consumed Waveplate: {current} from '{name}'")
+                break
         self.info_set('Consumed Waveplate', current)
         
         # 3. 活躍度點數分析
-        points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re, frame=self._daily_snapshot1)
-        if not points_boxes:
-            points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re, frame=self._daily_snapshot2)
-            
-<<<<<<< HEAD
-        points = int(points_boxes[0].name) if points_boxes else 0
+        points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, frame=self._daily_snapshot1)
+        points = 0
+        for box in points_boxes:
+            name = box.name.replace(' ', '')
+            if match := re.compile(r'(\d+)').search(name):
+                points = int(match.group(1))
+                logger.info(f"Detected Activity Points: {points} from '{name}'")
+                break
         self.info_set('Activity Pts', points)
-        
-        # 同時設定中文 Key 作為備選，確保在某些版本的 UI 中能顯示
-        self.info_set(self.tr('Waveplate (Current)'), current_stamina)
-        self.info_set(self.tr('Waveplate Crystal (Backup)'), backup_stamina)
+        if points == 0:
+            points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, frame=self._daily_snapshot2)
+            for box in points_boxes:
+                name = box.name.replace(' ', '')
+                if match := re.compile(r'(\d+)').search(name):
+                    points = int(match.group(1))
+                    logger.info(f"Detected Activity Points (snapshot 2): {points} from '{name}'")
+                    break
+            self.info_set('Activity Pts', points)
         
         self.info_set('current task', self.tr('Analysis completed'))
         
         # 清理截圖
-=======
-        if points_boxes:
-            points = int(points_boxes[0].name)
-            if points > 0:
-                self.info_set(self.tr('Activity Pts'), points)
-        else:
-            points = 0
-            
-        # 清理截圖釋放內存
->>>>>>> f56624bdde0d2619a3aa7626d483acbd3d3e0201
         del self._daily_snapshot1
         del self._daily_snapshot2
-        if hasattr(self, '_stamina_snapshot'):
-            del self._stamina_snapshot
+        del self._stamina_snapshot
         
         return current, points >= 100
 
@@ -291,26 +321,43 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         return points
 
     def claim_daily(self):
-        self.info_set('current task', self.tr('Claiming Task'))
-        self.ensure_main(time_out=5)
+        self.log_info(self.tr('Claiming daily rewards'))
+        self.info_set('Log', self.tr('Claiming daily rewards'))
         self.open_daily()
 
-        # 回歸上游邏輯：單次點擊領取全部，不重試（避免連點跳轉）
-        self.click(0.87, 0.17, after_sleep=0.5)
-        self.sleep(1)
+        # 上游邏輯：快速點擊領取，不進行 Label 阻塞
+        self.click(0.87, 0.17, after_sleep=0.5) 
 
         total_points = self.get_total_daily_points()
         self.info_set('Claimed Activity Pts', total_points)
+        self.info_set('Log', f"{self.tr('Activity Pts')}: {total_points}")
+        
         if total_points < 100:
             raise Exception("Can't complete daily task, may need to increase stamina manually!")
 
+        # 領取寶箱
         self.click(0.89, 0.85, after_sleep=0.5)
-        self.ensure_main(time_out=10)
+        self.back(after_sleep=0.5)
 
     def claim_mail(self):
-        self.info_set('current task', self.tr('Opening ESC Menu'))
-        self.ensure_main(time_out=5) # 確保在選單中，會執行 Esc 動作
-        self.info_set('current task', self.tr('Claiming Mail'))
-        self.click(0.64, 0.95, after_sleep=1)
-        self.click(0.14, 0.9, after_sleep=1)
+        self.info_set('current task', 'claim mail')
+        self.info_set('Log', self.tr('Open ESC menu'))
+        # 使用 wait_until 取代死等，檢測郵件圖示 OCR "郵件" 或 "Mail" 確保選單已開啟
+        self.wait_until(
+            lambda: self.ocr(0.6, 0.9, 0.7, 1.0), 
+            pre_action=lambda: self.back(after_sleep=0.5), 
+            time_out=5, settle_time=0.3
+        )
+        
+        self.log_info(self.tr('Open mail'))
+        self.info_set('Log', self.tr('Open mail'))
+        # 參照上游座標 (0.64, 0.95)
+        self.click(0.64, 0.95, after_sleep=0.5) 
+        
+        self.log_info(self.tr('Claim mail'))
+        self.info_set('Log', self.tr('Claim mail'))
+        # 檢測「全部領取」按鈕出現後立即點擊
+        self.wait_ocr(0.05, 0.85, 0.25, 0.95, match=re.compile(r'.*領.*|.*Claim.*'), 
+                      post_action=lambda: self.click(0.14, 0.9, after_sleep=0.3),
+                      time_out=5, settle_time=0.1, raise_if_not_found=False)
         self.ensure_main(time_out=10)
