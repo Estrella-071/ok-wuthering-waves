@@ -17,16 +17,16 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
         self.description = "Farms the selected Tacet Suppression, until no stamina. Must be able to teleport (F2)."
         self.name = "Tacet Suppression"
         self.support_schedule_task = True
-        default_config = {
-            'Which Tacet Suppression to Farm': 1,  # starts with 1
-        }
-        self.total_number = 16
-        self.target_enemy_time_out = 10
-        default_config.update(self.default_config)
         self.config_description = {
             'Which Tacet Suppression to Farm': 'The Tacet Suppression number in the F2 list.',
         }
+        default_config = {
+            'Which Tacet Suppression to Farm': 1,  # starts with 1
+        }
+        default_config.update(self.default_config)
         self.default_config = default_config
+        self.total_number = 16
+        self.target_enemy_time_out = 10
         self.door_walk_method = {  # starts with 0
             0: [],
             1: [],
@@ -46,31 +46,46 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
         self.wait_in_team_and_world(esc=True)
         self.farm_tacet()
 
-    def farm_tacet(self, daily=False, used_stamina=0, config=None):
+    def farm_tacet(self, daily=False, used_stamina=0, config=None, prefer_double=None):
         if config is None:
             config = self.config
+        if prefer_double is None:
+            prefer_double = self.stamina_config.get('Prefer Double Stamina', False)
         if daily:
             must_use = 180 - used_stamina
         else:
             must_use = 0
         self.info_incr('used stamina', 0)
+        self.info_set('current task', self.tr('Farming Tacet Suppression'))
         while True:
-            self.sleep(1)
-            gray_book_boss = self.openF2Book("gray_book_boss")
-            self.click_box(gray_book_boss, after_sleep=1)
-            current, back_up, total = self.get_stamina()
+            gray_book_boss = self.openF2Book("gray_book_boss", opened=False)
+            
+            self.wait_until(
+                lambda: self.get_stamina(update_info=False)[0] != -1,
+                pre_action=lambda: self.click_box(gray_book_boss, after_sleep=0.1),
+                time_out=5, settle_time=0.1
+            )
+            current, back_up, total = self.get_stamina(update_info=False)
             if current == -1:
-                self.click_relative(0.04, 0.4, after_sleep=1)
-                current, back_up, total = self.get_stamina()
+                self.wait_until(
+                    lambda: self.get_stamina(update_info=False)[0] != -1,
+                    pre_action=lambda: self.click_relative(0.04, 0.4, after_sleep=0.1),
+                    time_out=3, settle_time=0.1
+                )
+                current, back_up, total = self.get_stamina(update_info=False)
             if total < self.stamina_once:
                 return self.not_enough_stamina()
 
-            self.click_relative(0.18, 0.48, after_sleep=1)
             index = config.get('Which Tacet Suppression to Farm', 1) - 1
+            self.wait_until(
+                lambda: self.get_stamina(update_info=False)[0] != -1,
+                pre_action=lambda: self.click_relative(0.18, 0.48, after_sleep=0.1),
+                time_out=5, settle_time=0.1
+            )
             self.teleport_to_tacet(index)
             self.wait_click_travel()
+            
             self.wait_in_team_and_world(time_out=120)
-            self.sleep(2)
             if self.door_walk_method.get(index) is not None:
                 for method in self.door_walk_method.get(index):
                     self.send_key_down(method[0])
@@ -84,12 +99,13 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             else:
                 self.walk_until_f(time_out=4, backward_time=0, raise_if_not_found=True)
                 self.pick_f(handle_claim=False)
+            logger.debug('start combat')
             self.combat_once()
             self.sleep(3)
+            logger.debug('claim reward')
             self.walk_to_treasure()
             self.pick_f(handle_claim=False)
-            can_continue, used = self.use_stamina(once=self.stamina_once, must_use=must_use)
-            self.info_incr('used stamina', used)
+            can_continue, used = self.use_stamina(once=self.stamina_once, must_use=must_use, prefer_double=prefer_double)
             self.sleep(4)
             self.click(0.51, 0.84, after_sleep=3)
             if not can_continue:

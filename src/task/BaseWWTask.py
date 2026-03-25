@@ -14,7 +14,7 @@ from src.scene.WWScene import WWScene
 
 logger = Logger.get_logger(__name__)
 number_re = re.compile(r'(\d+)')
-stamina_re = re.compile(r'(\d+)/(\d+)')
+stamina_re = re.compile(r'(\d+)/(\d+)')  # 兼容 OCR 空格 (name 已 replace)
 f_white_color = {
     'r': (235, 255),  # Red range
     'g': (235, 255),  # Green range
@@ -32,10 +32,36 @@ class BaseWWTask(BaseTask):
         self.monthly_card_config = self.get_global_config('Monthly Card Config')
         self.char_config = self.get_global_config('Character Config')
         self.key_config = self.get_global_config('Game Hotkey Config')  # 游戏热键配置
+        self.stamina_config = self.get_global_config('Stamina Preference Settings')
         self.next_monthly_card_start = 0
         self._logged_in = False
         self.scene: WWScene | None = None
-        self.tacet_scroll_x = 2490 / 2560
+
+    @property
+    def app(self):
+        return og.app
+
+    def info_set(self, key, value):
+        if hasattr(self, '_proxy_task') and getattr(self, '_proxy_task', None) is not None:
+            self._proxy_task.info_set(key, value)
+        else:
+            super().info_set(key, value)
+
+    def info_incr(self, key, inc=1):
+        if hasattr(self, '_proxy_task') and getattr(self, '_proxy_task', None) is not None:
+            self._proxy_task.info_incr(key, inc)
+        else:
+            super().info_incr(key, inc)
+
+    def sync_config(self):
+        # 同步本地体力配置至全局
+        if 'Prefer Double Stamina' not in self.config:
+            return
+        local_val = self.config.get('Prefer Double Stamina', False)
+        if local_val != self.stamina_config.get('Prefer Double Stamina', False):
+            logger.info(f"同步体力偏好至全局: {local_val}")
+            self.stamina_config['Prefer Double Stamina'] = local_val
+
 
     def is_open_world_auto_combat(self):
         from src.task.AutoCombatTask import AutoCombatTask
@@ -328,18 +354,19 @@ class BaseWWTask(BaseTask):
         return "w" if delta_y > 0 else "s"
 
     def find_treasure_icon(self):
-        return self.find_one('treasure_icon', box=self.box_of_screen(0.18, 0.1, 0.82, 0.81), threshold=0.8,
-                             target_height=720)
+        return self.find_one('treasure_icon', box=self.box_of_screen(0.18, 0.1, 0.82, 0.81), threshold=0.7)
 
-    def click(self, x=-1, y=-1, move_back=False, name=None, interval=-1, move=True, down_time=0.01, after_sleep=0,
+    def click(self, x=-1, y=-1, move_back=False, name=None, interval=-1, move=True, down_time=None, after_sleep=0,
               key="left"):
         if x == -1 and y == -1:
             x = self.width_of_screen(0.5)
             y = self.height_of_screen(0.5)
             move = False
-            down_time = 0.01
+            if down_time is None:
+                down_time = 0.01
         else:
-            down_time = 0.2
+            if down_time is None:
+                down_time = 0.2
         return super().click(x, y, move_back, name, interval, move=move, down_time=down_time, after_sleep=after_sleep,
                              key=key)
 
@@ -393,28 +420,45 @@ class BaseWWTask(BaseTask):
         else:
             return True
 
-    def get_stamina(self):
-        boxes = self.wait_ocr(0.49, 0.0, 0.92, 0.10, raise_if_not_found=False,
-                              match=[number_re, stamina_re], log=self.debug)
+    def get_stamina(self, frame=None, update_info=True):
+        if frame is None:
+            boxes = self.wait_ocr(0.49, 0.0, 0.92, 0.10, raise_if_not_found=False,
+                                  match=[number_re, stamina_re], log=self.debug)
+        else:
+            boxes = self.ocr(0.49, 0.0, 0.92, 0.10, frame=frame)
+
         if not boxes:
-            self.screenshot('stamina_error')
+            if frame is None:
+                self.screenshot('stamina_error')
             return -1, -1, -1
+
         current = 0
         back_up = 0
         for box in boxes:
-            if match := stamina_re.search(box.name):
+            name = box.name.replace(' ', '')
+            if match := stamina_re.search(name):
                 current = int(match.group(1))
-            elif match := number_re.search(box.name):
-                back_up = int(match.group(1))
-        self.info_set('current_stamina', current)
-        self.info_set('back_up_stamina', back_up)
+            elif match := number_re.search(name):
+                val = int(match.group(1))
+                if val > 10 and back_up == 0:
+                    back_up = val
+
+        if update_info:
+            self.info_set('current_stamina', f'{current}/240')
+            self.info_set('back_up_stamina', f'{back_up}/480')
         return current, back_up, current + back_up
 
-    def use_stamina(self, once, must_use=0):
+    def use_stamina(self, once, must_use=0, prefer_double=None):
+        if prefer_double is None:
+            prefer_double = self.stamina_config.get('Prefer Double Stamina', False)
         self.sleep(1)
         current, back_up, total = self.get_stamina()
         y = 0.62
-        if current >= once * 2:
+        if prefer_double and total >= once * 2:
+            used = once * 2
+            x = 0.67
+            logger.info(f"偏好双倍且总体力足够, {total} >= {once * 2}")
+        elif current >= once * 2:
             used = once * 2
             x = 0.67
             logger.info(f"当前体力大于等于双倍, {current} >= {once * 2}")
@@ -428,15 +472,33 @@ class BaseWWTask(BaseTask):
             logger.info(f"使用单倍体力")
         self.click(x, y, after_sleep=0.5)
         if self.wait_feature('gem_add_stamina', horizontal_variance=0.4, vertical_variance=0.05,
-                             time_out=1):  # 看是否需要使用备用体力
-            self.click(0.70, 0.71, after_sleep=0.5)  # 点击确认
+                             time_out=1):
+            self.click(0.70, 0.71, after_sleep=0.5)
             self.click(0.70, 0.71, after_sleep=1)
             self.back(after_sleep=0.5)
             self.click(x, y, after_sleep=0.5)
-
+            back_up -= used
+            if back_up < 0:
+                back_up = 0
         current -= used
+        if current < 0: current = 0
         must_use -= used
+        if must_use < 0: must_use = 0
         total -= used
+        if total < 0: total = 0
+        
+        self.info_set('current_stamina', f'{current}/240')
+        self.info_set('back_up_stamina', f'{max(0, back_up)}/480')
+
+        # update unified waveplate tracker
+        if hasattr(self, '_proxy_task') and getattr(self, '_proxy_task', None) is not None:
+            self._proxy_task._consumed_waveplate += used
+            current_used = self._proxy_task._consumed_waveplate
+        else:
+            self._consumed_waveplate = getattr(self, '_consumed_waveplate', 0) + used
+            current_used = self._consumed_waveplate
+            
+        self.info_set('Consumed Waveplate', f"{current_used}/180")
         if total < once:
             logger.info(f"current stamina: {current} not enough to continue")
             can_continue = False
@@ -595,8 +657,7 @@ class BaseWWTask(BaseTask):
     def walk_to_treasure(self, send_f=True, raise_if_not_found=True):
         self.log_info('start walk_to_treasure')
         if not self.walk_to_box(self.find_treasure_icon, end_condition=self.find_f_with_text):
-            if not self.walk_to_box(self.find_treasure_icon, end_condition=self.find_f_with_text):
-                raise Exception(f'can not walk to treasure!')
+            raise Exception(f'can not walk to treasure!')
         if send_f:
             self.walk_until_f(time_out=2, backward_time=0, raise_if_not_found=raise_if_not_found)
         self.sleep(1)
@@ -667,19 +728,39 @@ class BaseWWTask(BaseTask):
 
     def wait_in_team_and_world(self, time_out=10, raise_if_not_found=True, esc=False):
         success = self.wait_until(self.in_team_and_world, time_out=time_out, raise_if_not_found=raise_if_not_found,
-                                  post_action=lambda: self.back(after_sleep=2) if esc else None)
+                                   post_action=lambda: self.back(after_sleep=2) if esc else None)
         if success:
             self.sleep(0.1)
         return success
 
     def ensure_main(self, esc=True, time_out=30):
         self.info_set('current task', f'wait main esc={esc}')
+        
+        # 如果尚未登錄，給予充足的啟動緩衝 (3 分鐘)
         if not self._logged_in:
             time_out = 180
-        if not self.wait_until(lambda: self.is_main(esc=esc), time_out=time_out, raise_if_not_found=False):
-            raise Exception('Please start in game world and in team!')
-        self.sleep(0.5)
-        self.info_set('current task', f'in main esc={esc}')
+            
+        # 1. 第一階段：標準等待 (預設 30 秒)
+        if self.wait_until(lambda: self.is_main(esc=esc), time_out=time_out, raise_if_not_found=False):
+            self.sleep(0.5)
+            self.info_set('current task', f'in main esc={esc}')
+            self.info_set('錯誤', '') # 清除可能的舊錯誤
+            return True
+            
+        # 2. 第二階段：待機容錯 (效法視窗關閉邏輯，轉為暫停等待而非崩潰)
+        self.log_warning(self.tr('Game loading timeout, entering standby mode (waiting for world UI)...'))
+        self.info_set('錯誤', self.tr('Loading timeout: Waiting for manual recovery or auto-resume...'))
+        
+        # 進入長效輪詢，直到玩家手動完成加載或遊戲自行回位
+        # 這裡不設強硬超時 (設置為 1 小時)，且不拋出 Exception
+        if self.wait_until(lambda: self.is_main(esc=esc), time_out=3600, raise_if_not_found=False):
+            self.sleep(0.5)
+            self.info_set('錯誤', '')
+            self.info_set('current task', f'in main esc={esc}')
+            return True
+        
+        # 極端情況（如按了 1 小時都沒回位且使用者未停止），再考慮安全拋出
+        raise Exception('Ensure main failed after prolonged standby.')
 
     def is_main(self, esc=True):
         if self.in_team_and_world():
@@ -694,39 +775,36 @@ class BaseWWTask(BaseTask):
 
     def wait_login(self):
         if not self._logged_in:
-            if self.in_team_and_world():
+            if self.find_one('login_account', vertical_variance=0.1, threshold=0.7):
+                self.wait_until(lambda: self.find_one('login_account', threshold=0.7) is None,
+                                pre_action=lambda: self.click_relative(0.5, 0.9, after_sleep=3), time_out=30)
+                self.wait_until(lambda: self.find_monthly_card() or self.in_team_and_world(),
+                                pre_action=lambda: self.click_relative(0.5, 0.9, after_sleep=3), time_out=120)
+                self.wait_until(lambda: self.in_team_and_world(),
+                                post_action=lambda: self.click_relative(0.5, 0.9, after_sleep=3), time_out=5)
+                self.log_info('Auto Login Success', notify=True)
+                self._logged_in = True
+                self.sleep(3)
                 return True
             self.handle_monthly_card()
-            texts = self.ocr(log=self.debug)
+            texts = self.ocr()
             if login := self.find_boxes(texts, boundary=self.box_of_screen(0.3, 0.3, 0.7, 0.7), match="登录"):
-                if not self.find_boxes(texts, boundary=self.box_of_screen(0.3, 0.3, 0.7, 0.7), match="+86"):
-                    self.click(login, after_sleep=1)
+                if not self.find_boxes(texts, match="+86"):
+                    self.click(login)
                     self.log_info('点击登录按钮!')
-                return False
-            if agree := self.find_boxes(texts, boundary=self.box_of_screen(0.3, 0.3, 0.7, 0.7), match="同意"):
-                self.log_debug(f'found agree {agree}')
-                if self.find_boxes(texts, boundary=self.box_of_screen(0.3, 0.3, 0.7, 0.7), match=re.compile("隐私")):
-                    self.click(agree, after_sleep=1)
-                    self.log_info('点击同意按钮!')
                 return False
             if self.find_boxes(texts, match=re.compile("游戏即将重启")):
                 self.log_info('游戏更新成功, 游戏即将重启')
-                self.click(self.find_boxes(texts, match="确认"), after_sleep=60)
+                self.click(self.find_boxes(texts, match="确认"), after_sleep=30)
                 result = self.start_device()
                 self.log_info(f'start_device end {result}')
                 self.sleep(30)
                 return False
-
             if start := self.find_boxes(texts, boundary='bottom_right', match=["开始游戏", re.compile("进入游戏")]):
                 if not self.find_boxes(texts, boundary='bottom_right', match="登录"):
                     self.click(start)
                     self.log_info(f'点击开始游戏! {start}')
                     return False
-
-            if login_account := self.find_boxes(texts, match=re.compile("Windows.{0,3}Product", re.IGNORECASE)):
-                self.log_info(f'wait_login {login_account}')
-                self.click(0.5, 0.5, after_sleep=3)
-                return False
 
     def in_team_and_world(self):
         return self.in_team()[
@@ -892,20 +970,16 @@ class BaseWWTask(BaseTask):
 
     def handle_monthly_card(self):
         monthly_card = self.find_monthly_card()
-        # self.screenshot('monthly_card1')
         if monthly_card is not None:
-            # self.screenshot('monthly_card1')
             self.log_info('monthly_card found click')
-            self.click_relative(0.50, 0.89)
-            self.sleep(2)
-            # self.screenshot('monthly_card2')
-            self.click_relative(0.50, 0.89)
-            self.sleep(2)
-            self.wait_until(self.in_team_and_world, time_out=10,
-                            post_action=lambda: self.click_relative(0.50, 0.89, after_sleep=1))
-            # self.screenshot('monthly_card3')
+            self.wait_until(lambda: not self.find_monthly_card(),
+                            pre_action=lambda: self.click_relative(0.50, 0.89, after_sleep=0.1),
+                            time_out=5, settle_time=0.1, raise_if_not_found=False)
+            self.wait_until(self.in_team_and_world,
+                            pre_action=lambda: self.click_relative(0.50, 0.89, after_sleep=0.1),
+                            time_out=10, settle_time=0.1)
             self.set_check_monthly_card(next_day=True)
-        # logger.debug(f'check_monthly_card {monthly_card}')
+        logger.debug(f'check_monthly_card {monthly_card}')
         return monthly_card is not None
 
     @property
@@ -925,28 +999,38 @@ class BaseWWTask(BaseTask):
         self.send_key_up('alt')
         self.sleep(0.5)
 
+    def _open_book_mouse(self, feature):
+        # 如果已經離開主世界界面（說明書已經正在開啟中或已開啟），則不應再重試點擊，防止誤觸頂部體力圖示
+        if not self.in_team_and_world():
+            return True
+            
+        self.send_key_down('alt')
+        self.sleep(0.12)
+        self.click_relative(0.77, 0.05, down_time=0.08)
+        self.sleep(0.04)
+        self.send_key_up('alt')
+        
+        # 全屏掃描確保識別率，同時如果偵測到已經不在主世界，也認為成功，避免重複點擊導致誤觸
+        self.sleep(0.1)
+        return not self.in_team_and_world() or bool(self.find_one(feature, threshold=0.7))
+
     def openF2Book(self, feature="gray_book_all_monsters", opened=False):
         if hasattr(self, 'reset_to_false'):
             self.reset_to_false('opening book')
+            
         if not opened:
-            self.log_info('click f2 to open the book')
+            # 恢复用户的高频重试模式，减少硬性延迟
             if self.in_team_and_world():
-                self.log_info('send mouse key to open the book')
-                self.send_key_down('alt')
-                self.sleep(0.05)
-                self.click_relative(0.77, 0.05)
-                self.sleep(0.02)
-                self.send_key_up('alt')
-                self.sleep(3)
-            if self.in_team_and_world():
-                self.send_key('f2', after_sleep=3)
-                self.log_info('send f2 key to open the book failed, use f2')
-
-        gray_book_boss = self.wait_book(feature)
-        self.sleep(0.8)
+                if not self.wait_until(lambda: self._open_book_mouse(feature), time_out=4, raise_if_not_found=False, settle_time=0.2):
+                    logger.info('Mouse click failed, using F2 fallback')
+                    self.send_key('f2')
+        
+        # 等待界面特徵出現
+        gray_book_boss = self.wait_book(feature, time_out=4)
         if not gray_book_boss:
-            self.log_error("can't find gray_book_boss, make sure f2 is the hotkey for book", notify=True)
-            raise Exception("can't find gray_book_boss, make sure f2 is the hotkey for book")
+            msg = self.tr("can't find gray_book_boss, make sure f2 is the hotkey for book")
+            self.log_error(msg, notify=True)
+            raise Exception(msg)
         return gray_book_boss
 
     def click_traval_button(self):
@@ -961,7 +1045,7 @@ class BaseWWTask(BaseTask):
                             raise_if_not_found=False,
                             threshold=0.6,
                             time_out=2):
-                        self.click(0.49, 0.55, after_sleep=0.5)  # 点击不再提醒
+                        self.click(0.49, 0.55, after_sleep=0.5)
                         self.click(confirm, after_sleep=0.5)
                         self.wait_click_feature(
                             ['confirm_btn_hcenter_vcenter', 'confirm_btn_highlight_hcenter_vcenter'],
@@ -975,9 +1059,8 @@ class BaseWWTask(BaseTask):
 
     def wait_book(self, feature="gray_book_all_monsters", time_out=3):
         gray_book_boss = self.wait_until(
-            lambda: self.find_one(feature, box='box_gray_book',
-                                  threshold=0.3),
-            time_out=time_out, settle_time=1)
+            lambda: self.find_one(feature, threshold=0.65),
+            time_out=time_out, settle_time=0.1)
         logger.info(f'found gray_book_boss {gray_book_boss}')
         # if self.debug:
         #     self.screenshot(feature)
@@ -986,9 +1069,9 @@ class BaseWWTask(BaseTask):
     def check_main(self):
         if not self.in_team()[0]:
             self.click_relative(0, 0)
-            self.send_key('esc')
-            self.sleep(1)
-            if not self.in_team()[0]:
+            if not self.wait_until(lambda: self.in_team()[0],
+                                   pre_action=lambda: self.send_key('esc', after_sleep=0.5),
+                                   time_out=5, raise_if_not_found=False):
                 raise Exception('must be in game world and in teams')
         return True
 
@@ -1004,7 +1087,7 @@ class BaseWWTask(BaseTask):
             y = 0.28
             height = (0.85 - 0.28) / 4
             y += height * index
-            self.click_relative(x, y, after_sleep=1)
+            self.click_relative(x, y, after_sleep=0.1)
         else:
             min_width = self.width_of_screen(475 / 2560)
             min_height = self.height_of_screen(40 / 1440)
@@ -1016,14 +1099,23 @@ class BaseWWTask(BaseTask):
                 self.draw_boxes('double_drop', double, color='blue')
             gap_per_index = (bar_bottom - bar_top) / total_number
             y = gap_per_index * (serial_number - container_max_rows + default_container_display) + bar_top
-            self.click_relative(self.tacet_scroll_x, y)
+            # 稍微向左偏移至 0.975，確保在多種解析度下都能精確點擊到捲軸
+            self.click_relative(0.975, y, after_sleep=0.1)
             logger.info(f'scroll to target')
-            btns = self.find_feature('boss_proceed', box=self.box_of_screen(0.94, 0.6, 0.97, 0.88), threshold=0.8)
+            
+            # 視覺驅動：等待按鈕列表穩定
+            btns = self.wait_until(
+                lambda: self.find_feature('boss_proceed', box=self.box_of_screen(0.94, 0.6, 0.97, 0.88), threshold=0.8),
+                time_out=3, settle_time=0.2
+            )
+            
             if btns is None:
-                raise Exception("can't find boss_proceed")
+                raise Exception("can't find boss_proceed after scrolling")
             bottom_btn = max(btns, key=lambda box: box.y)
             self.click_box(bottom_btn, after_sleep=1)
-        self.wait_feature(['fast_travel_custom', 'gray_teleport', 'remove_custom'], time_out=10, settle_time=0.5)
+            
+        self.wait_feature(['fast_travel_custom', 'gray_teleport', 'remove_custom'], time_out=10, settle_time=0.1)
+
 
     def change_time_to_night(self):
         logger.info('change time to night')

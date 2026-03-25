@@ -612,6 +612,24 @@ msgstr "自動ローグライク失敗、次のノードまで手動操作が必
 msgid "current task"
 msgstr "現在のタスク"
 
+msgid "Tower of Adversity"
+msgstr "逆境深塔"
+
+msgid "Teleport to Tower of Adversity"
+msgstr "逆境深塔へ転送"
+
+msgid "Attempting to open the book via Mouse Click (Alt)"
+msgstr "マウスボタン(Alt)でガイドを開いています"
+
+msgid "Consumed Waveplate"
+msgstr "結晶波長板（消費済み）"
+
+msgid "Waveplate Crystal (Backup)"
+msgstr "結晶波長精錬板（予備）"
+
+msgid "Waveplate"
+msgstr "結晶波長板"
+
 msgid "in main"
 msgstr "メイン画面"
 
@@ -704,3 +722,183 @@ msgstr ""
 
 msgid "Farm"
 msgstr ""
+
+msgid "Waveplate (Current)"
+msgstr "結晶波片 (現在)"
+
+msgid "Activity Pts"
+msgstr "活躍度ポイント"
+
+msgid "Analyzing daily snapshots in background..."
+msgstr "デイリータスクのスクリーンショットをバックグラウンドで分析中..."
+
+msgid "Arrived at destination"
+msgstr "目的地に到着しました"
+
+msgid "Arrived at Tower of Adversity"
+msgstr "深塔に到着しました"
+
+msgid "Claiming daily rewards"
+msgstr "デイリー報酬を受け取っています"
+
+msgid "Daily one-stop completed"
+msgstr "デイリー一括処理完了"
+
+msgid "Start combat"
+msgstr "戦闘開始"
+
+msgid "Claim reward"
+msgstr "報酬を受け取る"
+
+msgid "Arrived at Forgery Challenge"
+msgstr "凝素領域に到着しました"
+
+msgid "Arrived at Simulation Challenge"
+msgstr "模擬領域に到着しました"
+
+msgid "Arrived at Nightmare Nest"
+msgstr "夢魘の巣に到着しました"
+
+msgid "Open Pioneers Podcast"
+msgstr "先約電台を開く"
+
+msgid "Claim task reward"
+msgstr "任務報酬を受け取る"
+
+msgid "Claim season reward"
+msgstr "シーズン報酬を受け取る"
+
+msgid "Open ESC menu"
+msgstr "ESC メニューを開く"
+
+msgid "Open mail"
+msgstr "メールを開く"
+
+msgid "Claim mail"
+msgstr "メールを受け取る"
+
+msgid "Setting"
+msgstr "設定"
+
+msgid "Basic Setting"
+msgstr "基本設定"
+
+msgid "Global settings for OK-WW"
+msgstr "OK-WW 全般設定"
+
+msgid "Daily task already completed, skip teleport"
+msgstr "デイリー任務完了、テレポートをスキップ"
+
+msgid "Start farming"
+msgstr "周回開始"
+
+msgid "Farming completed, return to main world"
+msgstr "周回完了、オープンワールドに戻ります"
+
+msgid "Open F2 book"
+msgstr "F2ガイドを開く"
+
+msgid "Click proceed"
+msgstr "「進む」をクリック"
+
+msgid "Pioneers Podcast"
+msgstr "先駆ラジオ"
+
+msgid "Alt + Click to open Pioneers Podcast"
+msgstr "Alt + アイコンクリックで先駆ラジオを開く"
+
+msgid "Detecting stamina and activity points"
+msgstr "活躍度の状態を判定中"
+
+msgid "Analyzing snapshots"
+msgstr "スナップショット分析中"
+
+msgid "After Task Complete"
+msgstr "タスク完了後の動作"
+
+msgid "None"
+msgstr "なし"
+
+msgid "Close Game & Tool"
+msgstr "ゲームとツールを閉じる"
+
+msgid "Action after task: None / Close Game & Tool"
+msgstr "タスク完了後の動作：なし / ゲームとツールを閉じる"
+
+msgid "Stamina Preference Settings"
+msgstr "スタミナ優先設定"
+
+msgid "Prefer Double Stamina"
+msgstr "スタミナ2倍を優先"
+
+msgid "Always use double stamina when sufficient (backup included) is available."
+msgstr "スタミナ（予備を含む）が十分な場合、常に2倍消費を優先します。"
+
+msgid "When to prefer using double stamina"
+msgstr "2倍スタミナを優先する条件"
+
+msgid "Always use double stamina when sufficient (backup included) is available."
+msgstr "スタミナ（予備含む）が十分な場合、常に2倍消費を優先します。"
+
+msgid "Activity Pts"
+msgstr "アクティビティポイント"
+
+msgid "Consumed Waveplate"
+msgstr "消費スタミナ"
+
+msgid "current_stamina"
+msgstr "現在のスタミナ"
+
+msgid "back_up_stamina"
+msgstr "予備スタミナ"
+
+msgid "Claimed Activity Pts"
+msgstr "獲得済みポイント"
+
+msgid "used stamina"
+msgstr "消費スタミナ"
+
+msgid "Activity points not enough, attempting to claim chests anyway"
+msgstr "アクティビティポイントが不足していますが、宝箱を受け取ります"
+
+msgid "claim daily reward {} via OCR"
+msgstr "OCR経由でデイリー報酬 {} を受け取ります"
+
+msgid "claim daily reward {} via fallback coordinate"
+msgstr "座標フォールバックでデイリー報酬 {} を受け取ります"
+
+msgid "Farming Nightmare Nest"
+msgstr "夢魘の巣を周回中"
+
+msgid "Farm Nightmare Nest for Daily Echo"
+msgstr "デイリー音骸のために夢魘の巣を周回"
+
+msgid "Start farming {}"
+msgstr "{} の周回を開始"
+
+msgid "Waiting for teleport to complete"
+msgstr "テレポート完了を待機中..."
+
+msgid "Analysis completed"
+msgstr "分析完了"
+
+msgid "[Completed] Farming Tacet Suppression"
+msgstr "[完了] 無音区周回"
+
+msgid "[Completed] Farming Forgery Challenge"
+msgstr "[完了] 凝素領域周回"
+
+msgid "[Completed] Farming Simulation Challenge"
+msgstr "[完了] シミュレーション挑戦周回"
+
+msgid "[Completed] Claiming daily rewards"
+msgstr "[完了] デイリー報酬受け取り"
+
+msgid "[Completed] Claiming mail"
+msgstr "[完了] メール受け取り"
+
+msgid "[Completed] Claiming Pioneers Podcast rewards"
+msgstr "[完了] 先約電台報酬受け取り"
+
+msgid "Analyzing game state..."
+msgstr "ゲーム状態を分析中..."
