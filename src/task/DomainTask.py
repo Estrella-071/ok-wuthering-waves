@@ -37,6 +37,8 @@ class DomainTask(WWOneTimeTask, BaseCombatTask):
             raise RuntimeError('"self.stamina_once" must be override')
         self.info_incr('used stamina', 0)
         while True:
+            if self.should_stop():
+                return
             self.walk_until_f(time_out=4, backward_time=0, raise_if_not_found=True)
             self.pick_f()
             self.combat_once()

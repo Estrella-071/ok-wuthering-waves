@@ -510,9 +510,8 @@ class BaseCombatTask(CombatCheck):
             self.set_key('Liberation Key', self.get_box_by_name('q').scale(scale))
             # self.set_key('Tool Key', self.get_box_by_name('t').scale(scale))
 
-            self.info_set('Liberation Key', self.get_liberation_key())
-            # self.info_set('Resonance Key', self.get_resonance_key())
-            self.info_set('Echo Key', self.get_echo_key())
+            self.get_liberation_key()
+            self.get_echo_key()
             # self.info_set('Tool Key', self.key_config['Tool Key'])
         return self.key_config
 
@@ -554,7 +553,6 @@ class BaseCombatTask(CombatCheck):
                     char.is_current_char = False
         self.combat_start = time.time()
         if len(self.chars) >= 2:
-            self.info_set('Chars', self.chars)
             for c in self.chars:
                 self.log_info(f'loaded chars success {c} {c.confidence}')
             return True

@@ -37,6 +37,8 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
         self._init_queue()
         self.log_info('opened gray_book_boss')
         while nest := self.get_nest_to_go():
+            if self.executor.should_stop():
+                return
             self.combat_nest(nest)
         self.ensure_main(time_out=30)
 
@@ -48,6 +50,8 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
         self._init_queue()
         self.log_info('opened gray_book_boss')
         while nest := self.get_nest_to_go():
+            if self.executor.should_stop():
+                return
             self.combat_nest(nest)
             if self._capture_success:
                 break
@@ -73,6 +77,8 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
         self.wait_in_team_and_world(time_out=30, raise_if_not_found=False)
         self.sleep(1)
         while self.find_f_with_text():
+            if self.executor.should_stop():
+                return
             self.send_key('f', after_sleep=1)
             self.wait_in_team_and_world(time_out=40, raise_if_not_found=False)
         self.sleep(2)
