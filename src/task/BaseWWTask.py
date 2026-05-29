@@ -340,7 +340,7 @@ class BaseWWTask(BaseTask):
         else:
             down_time = 0.2
         return super().click(x, y, move_back, name, interval, move=move, down_time=down_time, after_sleep=after_sleep,
-                             key=key)
+                              key=key)
 
     def check_for_monthly_card(self):
         if self.should_check_monthly_card():
@@ -664,6 +664,34 @@ class BaseWWTask(BaseTask):
     def sleep(self, timeout):
         return super().sleep(timeout - self.check_for_monthly_card())
 
+    def wait_page_stable(self, time_out=3, threshold=0.5, settle_time=0.2):
+        self.log_debug('Waiting for page to settle and become stable')
+        start = time.time()
+        last_frame_resized = None
+        stable_start = None
+        
+        while time.time() - start < time_out:
+            current_frame = self.next_frame()
+            if current_frame is None:
+                continue
+                
+            current_resized = cv2.resize(current_frame, (256, 256))
+            
+            if last_frame_resized is not None:
+                diff_val = np.mean(cv2.absdiff(current_resized, last_frame_resized))
+                if diff_val < threshold:
+                    if stable_start is None:
+                        stable_start = time.time()
+                    elif time.time() - stable_start >= settle_time:
+                        self.log_debug(f'Page settled in {time.time() - start:.2f}s (diff={diff_val:.4f})')
+                        return True
+                else:
+                    stable_start = None
+                    
+            last_frame_resized = current_resized
+        self.log_warning('wait_page_stable timeout')
+        return False
+
     def wait_in_team_and_world(self, time_out=10, raise_if_not_found=True, esc=False):
         success = self.wait_until(self.in_team_and_world, time_out=time_out, raise_if_not_found=raise_if_not_found,
                                   post_action=lambda: self.back(after_sleep=2) if esc else None)
@@ -949,13 +977,16 @@ class BaseWWTask(BaseTask):
                 self.click_relative(0.77, 0.05)
                 self.sleep(0.02)
                 self.send_key_up('alt')
-                self.sleep(3)
+                # Wait for world UI to start transitioning
+                self.wait_until(lambda: not self.in_team_and_world(), time_out=1.5, settle_time=0.1)
             if self.in_team_and_world():
-                self.send_key('f2', after_sleep=3)
+                self.send_key('f2', after_sleep=0.2)
                 self.log_info('send f2 key to open the book failed, use f2')
+                # Wait for world UI to start transitioning
+                self.wait_until(lambda: not self.in_team_and_world(), time_out=1.5, settle_time=0.1)
 
         gray_book_boss = self.wait_book(feature)
-        self.sleep(0.8)
+        self.sleep(0.3)
         if not gray_book_boss:
             self.log_error("can't find gray_book_boss, make sure f2 is the hotkey for book", notify=True)
             raise Exception("can't find gray_book_boss, make sure f2 is the hotkey for book")
@@ -1088,19 +1119,70 @@ class BaseWWTask(BaseTask):
     def go_to_tower(self):
         self.log_info('go to tower')
         self.ensure_main(time_out=80)
-        gray_book_weekly = self.openF2Book(Labels.gray_book_weekly)
+        
+        # Open quest book to take daily snapshots
+        gray_book_quest = self.openF2Book("gray_book_quest")
+        if not gray_book_quest:
+            self.log_error('go_to_tower can not find gray_book_quest')
+            return
+            
+        self.click_box(gray_book_quest)
+        self.wait_page_stable()
+        
+        snapshot1 = self.frame.copy()
+        self.click(0.974, 0.6)
+        self.wait_page_stable()
+        snapshot2 = self.frame.copy()
+        
+        # Switch to weekly boss tab for teleport
+        gray_book_weekly = self.wait_until(
+            lambda: self.find_one(Labels.gray_book_weekly, box='box_gray_book', threshold=0.3),
+            time_out=3, settle_time=0.2
+        )
         if not gray_book_weekly:
             self.log_error('go_to_tower can not find gray_book_weekly')
+            self.ensure_main(time_out=20)
             return
-        self.click_box(gray_book_weekly, after_sleep=3)
-        btn = self.find_one(Labels.boss_proceed, box=self.box_of_screen(0.91, 0.3, 0.95, 0.41), threshold=0.8)
+            
+        self.click_box(gray_book_weekly, after_sleep=0.5)
+        
+        btn = self.wait_feature(Labels.boss_proceed, box=self.box_of_screen(0.91, 0.3, 0.95, 0.41), threshold=0.8, time_out=3)
         if btn is None:
             self.ensure_main(time_out=20)
             return
-        self.click_box(btn, after_sleep=1)
+        self.click_box(btn, after_sleep=0.5)
         self.wait_click_travel()
+        
+        try:
+            self.parse_daily_snapshots(snapshot1, snapshot2)
+        except Exception as e:
+            self.log_error("Failed to parse daily snapshots in background", e)
+                
         self.wait_in_team_and_world(time_out=120)
         self.sleep(1)
+
+    def parse_daily_snapshots(self, snapshot1, snapshot2):
+        self.log_info('parse_daily_snapshots in background')
+        progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'^(\d+)/180$'), frame=snapshot1)
+        active_frame = snapshot1
+        
+        if not progress and snapshot2 is not None:
+            self.log_info('stamina not found in snapshot1, try snapshot2')
+            progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'^(\d+)/180$'), frame=snapshot2)
+            active_frame = snapshot2
+            
+        current = int(progress[0].name.split('/')[0]) if progress else -1
+        self.info_set('current daily progress', current)
+        
+        points_boxes = self.ocr(0.19, 0.8, 0.30, 0.93, match=number_re, frame=active_frame)
+        points = 0
+        if points_boxes:
+            try:
+                points = int(re.sub(r'\D', '', points_boxes[0].name))
+            except Exception:
+                pass
+        self.info_set('total daily points', points)
+        self.log_info(f'Background OCR parsed: stamina={current}, active_points={points}')
 
 
 double_drop_color = {
