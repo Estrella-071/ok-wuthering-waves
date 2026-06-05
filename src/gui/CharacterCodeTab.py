@@ -2,10 +2,10 @@ import difflib
 import json
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl, QObject, QEvent
+from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QColor, QDesktopServices, QPixmap, QTextCursor, QTextFormat, QPainter, QPainterPath
-from PySide6.QtWidgets import QApplication, QButtonGroup, QHBoxLayout, QLabel, QListWidgetItem, QSplitter, QTextEdit, QVBoxLayout, QWidget, QGraphicsDropShadowEffect, QFrame
-from qfluentwidgets import BodyLabel, FluentIcon, ListWidget, MessageBox, PlainTextEdit, PrimaryPushButton, PushButton, RadioButton, ToolButton
+from PySide6.QtWidgets import QApplication, QButtonGroup, QHBoxLayout, QLabel, QListWidgetItem, QSplitter, QTextEdit, QVBoxLayout, QWidget
+from qfluentwidgets import BodyLabel, FluentIcon, ListWidget, MessageBox, PlainTextEdit, PrimaryPushButton, PushButton, RadioButton
 
 from ok.gui.tasks.EditTaskTab import CodeEditor
 from ok.gui.tasks.PythonHighlighter import PythonHighlighter
@@ -35,40 +35,6 @@ CHARACTER_DISPLAY_NAMES = {
     "HavocRover": "Rover: Havoc",
 }
 
-
-class FloatingButtonFilter(QObject):
-    def __init__(self, parent_widget, save_btn, reset_btn, margin_x=32, margin_y=32, spacing=12):
-        super().__init__(parent_widget)
-        self.parent_widget = parent_widget
-        self.save_btn = save_btn
-        self.reset_btn = reset_btn
-        self.margin_x = margin_x
-        self.margin_y = margin_y
-        self.spacing = spacing
-        
-    def eventFilter(self, obj, event):
-        if obj == self.parent_widget and event.type() in (QEvent.Resize, QEvent.Show):
-            self.update_position()
-        return super().eventFilter(obj, event)
-        
-    def update_position(self):
-        # 計算 save_btn 的位置 (在最右側)
-        save_x = self.parent_widget.width() - self.save_btn.width() - self.margin_x
-        save_y = self.parent_widget.height() - self.save_btn.height() - self.margin_y
-        
-        # 計算 reset_btn 的位置 (在 save_btn 的左側)
-        reset_x = save_x - self.reset_btn.width() - self.spacing
-        reset_y = self.parent_widget.height() - self.reset_btn.height() - self.margin_y
-        
-        if save_x < 0: save_x = 0
-        if save_y < 0: save_y = 0
-        if reset_x < 0: reset_x = 0
-        if reset_y < 0: reset_y = 0
-        
-        self.save_btn.move(save_x, save_y)
-        self.reset_btn.move(reset_x, reset_y)
-
-
 class CharacterItemWidget(QWidget):
     def __init__(self, display_name, file_name, parent=None):
         super().__init__(parent)
@@ -76,9 +42,8 @@ class CharacterItemWidget(QWidget):
         layout.setContentsMargins(12, 6, 12, 6)
         
         self.name_label = BodyLabel(display_name, self)
-        self.file_label = QLabel(file_name, self)
+        self.file_label = BodyLabel(file_name, self)
         self.file_label.setStyleSheet("color: #8c8c8c;")
-        self.file_label.setFont(self.name_label.font())
         
         layout.addWidget(self.name_label)
         layout.addStretch()
@@ -103,16 +68,12 @@ class CharacterCodeTab(CustomTab):
         self.suppress_selection_guard = False
         self.suppress_mode_guard = False
 
-        self.vBoxLayout.setContentsMargins(16, 16, 0, 0)
-
         splitter = QSplitter(Qt.Horizontal, self.view)
         splitter.setChildrenCollapsible(False)
-        splitter.setStyleSheet("QSplitter::handle { background: transparent; }")
 
         left = QWidget(splitter)
-        left.setMinimumWidth(240)
         left_layout = QVBoxLayout(left)
-        left_layout.setContentsMargins(0, 0, 8, 16)
+        left_layout.setContentsMargins(0, 0, 8, 0)
         left_layout.addWidget(BodyLabel(self.tr("Characters")))
 
         self.char_list = ListWidget(left)
@@ -122,121 +83,35 @@ class CharacterCodeTab(CustomTab):
         left_layout.addWidget(self.char_list, 1)
 
         right = QWidget(splitter)
-        right.setMinimumWidth(500)
-        right.setStyleSheet("""
-            QPlainTextEdit, PlainTextEdit, CodeEditor {
-                border-right: none;
-                border-bottom: none;
-                border-top-left-radius: 10px;
-                border-top-right-radius: 0px;
-                border-bottom-left-radius: 0px;
-                border-bottom-right-radius: 0px;
-            }
-        """)
         right_layout = QVBoxLayout(right)
         right_layout.setContentsMargins(8, 0, 0, 0)
-        
-        # 1. 建立 Segmented Frame 包裹單選按鈕
-        self.mode_frame = QFrame(self)
-        self.mode_frame.setObjectName("modeFrame")
-        self.mode_frame.setStyleSheet("""
-            QFrame#modeFrame {
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 6px;
-                background-color: rgba(255, 255, 255, 0.03);
-            }
-        """)
-        frame_layout = QHBoxLayout(self.mode_frame)
-        frame_layout.setContentsMargins(2, 2, 2, 2)
-        frame_layout.setSpacing(2)
+        right_layout.addWidget(BodyLabel(self.tr("Character Code")))
 
-        self.builtin_radio = RadioButton(self.tr("Built-in"))
-        self.custom_radio = RadioButton(self.tr("Custom"))
+        mode_layout = QHBoxLayout()
+        self.builtin_radio = RadioButton(self.tr("Use built in"))
+        self.custom_radio = RadioButton(self.tr("Use custom"))
         self.mode_group = QButtonGroup(self)
         self.mode_group.addButton(self.builtin_radio)
         self.mode_group.addButton(self.custom_radio)
         self.builtin_radio.toggled.connect(self._mode_changed)
         self.custom_radio.toggled.connect(self._mode_changed)
-
-        radio_qss = """
-            RadioButton {
-                padding: 4px 10px;
-                border-radius: 4px;
-                background-color: transparent;
-                color: rgba(255, 255, 255, 0.7);
-            }
-            RadioButton:hover {
-                color: white;
-            }
-            RadioButton:checked {
-                background-color: rgba(255, 255, 255, 0.08);
-                color: white;
-                font-weight: bold;
-            }
-            RadioButton::indicator {
-                width: 0px;
-                height: 0px;
-            }
-        """
-        self.builtin_radio.setStyleSheet(radio_qss)
-        self.custom_radio.setStyleSheet(radio_qss)
-        frame_layout.addWidget(self.builtin_radio)
-        frame_layout.addWidget(self.custom_radio)
-
-        # 2. 建立頂部按鈕與標籤
         self.char_image_label = QLabel()
         self.char_image_label.setFixedSize(52, 52)
         self.char_image_label.setAlignment(Qt.AlignCenter)
-        
-        self.title_label = BodyLabel(self.tr("Character Code"))
-        font_title = self.title_label.font()
-        font_title.setBold(True)
-        self.title_label.setFont(font_title)
-
-        self.status_label = BodyLabel("")
-        
+        mode_layout.addWidget(self.char_image_label)
+        mode_layout.addWidget(self.builtin_radio)
+        mode_layout.addWidget(self.custom_radio)
+        mode_layout.addStretch(1)
         self.ask_ai_button = PushButton(FluentIcon.ROBOT, self.tr("Ask AI"))
         self.ask_ai_button.clicked.connect(self._copy_ask_ai_template)
-        
-        self.contribute_button = PushButton(FluentIcon.DOCUMENT, self.tr("Contribute Code"))
-        self.contribute_button.clicked.connect(self._open_contribute_code)
-        
-        self.how_to_button = ToolButton(FluentIcon.HELP, self)
+        self.how_to_button = PushButton(FluentIcon.HELP, self.tr("How To"))
         self.how_to_button.clicked.connect(self._show_how_to)
-        self.how_to_button.setFixedSize(32, 32)
-        
-        self.base_char_button = ToolButton(FluentIcon.CODE, self)
-        self.base_char_button.clicked.connect(self._open_base_char)
-        self.base_char_button.setFixedSize(32, 32)
-
-        # 3. 組合為單行工具欄 Layout
-        top_toolbar_layout = QHBoxLayout()
-        top_toolbar_layout.setContentsMargins(0, 0, 0, 0)
-        top_toolbar_layout.setSpacing(12)
-
-        top_toolbar_layout.addWidget(self.char_image_label)
-        top_toolbar_layout.addWidget(self.title_label)
-
-        sep_label1 = QLabel(" | ")
-        sep_label1.setStyleSheet("color: rgba(255, 255, 255, 0.15);")
-        top_toolbar_layout.addWidget(sep_label1)
-
-        top_toolbar_layout.addWidget(self.mode_frame)
-        top_toolbar_layout.addWidget(self.status_label)
-        top_toolbar_layout.addStretch(1)
-
-        top_toolbar_layout.addWidget(self.ask_ai_button)
-        top_toolbar_layout.addWidget(self.contribute_button)
-
-        sep_label2 = QLabel(" | ")
-        sep_label2.setStyleSheet("color: rgba(255, 255, 255, 0.15);")
-        top_toolbar_layout.addWidget(sep_label2)
-
-        top_toolbar_layout.addWidget(self.how_to_button)
-        top_toolbar_layout.addWidget(self.base_char_button)
-        top_toolbar_layout.addSpacing(16)
-        
-        right_layout.addLayout(top_toolbar_layout)
+        self.contribute_button = PushButton(FluentIcon.GITHUB, self.tr("Contribute Code"))
+        self.contribute_button.clicked.connect(self._open_contribute_code)
+        mode_layout.addWidget(self.ask_ai_button)
+        mode_layout.addWidget(self.how_to_button)
+        mode_layout.addWidget(self.contribute_button)
+        right_layout.addLayout(mode_layout)
 
         self.editor = CodeEditor(right)
         self.editor.setMinimumHeight(520)
@@ -245,48 +120,20 @@ class CharacterCodeTab(CustomTab):
         font.setFamily("Consolas")
         font.setPointSize(10)
         self.editor.setFont(font)
-        
         self.highlighter = PythonHighlighter(self.editor.document())
         self.editor.textChanged.connect(self._editor_text_changed)
         right_layout.addWidget(self.editor, 1)
 
-        self.save_button = PrimaryPushButton(FluentIcon.SAVE, self.tr("Save"), self.editor)
-        self.save_button.clicked.connect(self._save_current)
-        
-        # 套用精美的保存按鈕懸浮陰影
-        shadow_save = QGraphicsDropShadowEffect(self.save_button)
-        shadow_save.setBlurRadius(15)
-        shadow_save.setXOffset(0)
-        shadow_save.setYOffset(4)
-        shadow_save.setColor(QColor(0, 0, 0, 70))
-        self.save_button.setGraphicsEffect(shadow_save)
-
-        self.reset_button = PushButton(FluentIcon.SYNC, self.tr("Reset"), self.editor)
+        bottom_layout = QHBoxLayout()
+        self.status_label = BodyLabel("")
+        self.reset_button = PushButton(FluentIcon.SYNC, self.tr("Reset"))
         self.reset_button.clicked.connect(self._reset_current)
-        self.reset_button.setStyleSheet("""
-            QPushButton {
-                background-color: #2d2d2d;
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                color: white;
-            }
-            QPushButton:hover {
-                background-color: #383838;
-            }
-            QPushButton:pressed {
-                background-color: #202020;
-            }
-        """)
-        
-        # 套用精美的重置按鈕懸浮陰影
-        shadow_reset = QGraphicsDropShadowEffect(self.reset_button)
-        shadow_reset.setBlurRadius(15)
-        shadow_reset.setXOffset(0)
-        shadow_reset.setYOffset(4)
-        shadow_reset.setColor(QColor(0, 0, 0, 70))
-        self.reset_button.setGraphicsEffect(shadow_reset)
-        
-        self.floating_filter = FloatingButtonFilter(self.editor, self.save_button, self.reset_button)
-        self.editor.installEventFilter(self.floating_filter)
+        self.save_button = PrimaryPushButton(FluentIcon.SAVE, self.tr("Save"))
+        self.save_button.clicked.connect(self._save_current)
+        bottom_layout.addWidget(self.status_label, 1)
+        bottom_layout.addWidget(self.reset_button)
+        bottom_layout.addWidget(self.save_button)
+        right_layout.addLayout(bottom_layout)
 
         splitter.addWidget(left)
         splitter.addWidget(right)
@@ -366,19 +213,11 @@ class CharacterCodeTab(CustomTab):
         self._update_char_image()
         self._load_editor_code()
         self.status_label.setText(str(has_custom_char_code(char_cls) and self.tr("Custom code saved") or ""))
-        
-        # 動態更新標題文字
-        char_name_display = self._display_char_name(char_cls)
-        if has_custom_char_code(char_cls):
-            char_name_display = f"* {char_name_display}"
-        self.title_label.setText(f"{self.tr('Character Code')} / {char_name_display}")
 
     def _sync_editor_state(self):
         self.editor.setReadOnly(self.builtin_radio.isChecked())
         self.reset_button.setVisible(self.custom_radio.isChecked())
         self.save_button.setVisible(self.custom_radio.isChecked())
-        if self.custom_radio.isChecked():
-            self.floating_filter.update_position()
 
     def _mode_changed(self):
         if self.suppress_mode_guard:
@@ -570,9 +409,6 @@ class CharacterCodeTab(CustomTab):
             return
         url = CONTRIBUTE_CHAR_URL.format(class_name=self.current_char_cls.__name__)
         QDesktopServices.openUrl(QUrl(url))
-
-    def _open_base_char(self):
-        QDesktopServices.openUrl(QUrl(BASE_CHAR_URL))
 
     def _reload_live_char_code(self):
         if self.executor is None or self.current_char_cls is None:

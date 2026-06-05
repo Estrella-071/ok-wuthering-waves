@@ -854,11 +854,11 @@ msgstr "角色"
 msgid "Character Code"
 msgstr "角色代码"
 
-msgid "Built-in"
-msgstr "内置"
+msgid "Use built in"
+msgstr "使用内置"
 
-msgid "Custom"
-msgstr "自定义"
+msgid "Use custom"
+msgstr "使用自定义"
 
 msgid "Ask AI"
 msgstr "询问 AI"
@@ -1130,5 +1130,3 @@ msgstr "丽贝卡"
 
 msgid "Lucilla"
 msgstr "洛瑟菈"
-
-

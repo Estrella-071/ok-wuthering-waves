@@ -817,11 +817,11 @@ msgstr "캐릭터"
 msgid "Character Code"
 msgstr "캐릭터 코드"
 
-msgid "Built-in"
-msgstr "내장"
+msgid "Use built in"
+msgstr "기본 제공 사용"
 
-msgid "Custom"
-msgstr "사용자 정의"
+msgid "Use custom"
+msgstr "사용자 지정 사용"
 
 msgid "Ask AI"
 msgstr "AI에게 묻기"

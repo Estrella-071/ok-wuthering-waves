@@ -815,11 +815,11 @@ msgstr "キャラクター"
 msgid "Character Code"
 msgstr "キャラクターコード"
 
-msgid "Built-in"
-msgstr "内蔵"
+msgid "Use built in"
+msgstr "内蔵を使用"
 
-msgid "Custom"
-msgstr "カスタム"
+msgid "Use custom"
+msgstr "カスタムを使用"
 
 msgid "Ask AI"
 msgstr "AIに相談"
