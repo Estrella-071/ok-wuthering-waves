@@ -28,4 +28,4 @@ jobs:
           MAX_COMMENTS: 10 # 0 to disable
           PROJECT_CONTEXT: "This is a windows python game automation project, for the game Wuthering Waves, it automates game task and combat etc."
           CONTEXT_FILES: "README.md"
-          EXCLUDE_PATTERNS: "**/*.lock,**/*.json,**/*.md,**/*.ico,**/*.png"
+          EXCLUDE_PATTERNS: "**/*.lock,**/*.json,**/*.md,**/*.ico,**/*.png,**/*.webp"
