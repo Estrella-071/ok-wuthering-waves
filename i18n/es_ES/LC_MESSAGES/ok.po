@@ -871,11 +871,11 @@ msgstr "Personajes"
 msgid "Character Code"
 msgstr "Código del personaje"
 
-msgid "Use built in"
-msgstr "Usar integrado"
+msgid "Built-in"
+msgstr ""
 
-msgid "Use custom"
-msgstr "Usar personalizado"
+msgid "Custom"
+msgstr ""
 
 msgid "Ask AI"
 msgstr "Preguntar a la IA"
