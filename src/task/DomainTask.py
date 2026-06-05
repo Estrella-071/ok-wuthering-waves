@@ -35,12 +35,12 @@ class DomainTask(WWOneTimeTask, BaseCombatTask):
                 self.click(btn_dialog_close, move_back=True)
                 closed_by_click = True
         if not closed_by_click:
-            self.send_key('esc', after_sleep=2)
+            self.send_key('esc', after_sleep='auto')
             self.sleep(1)
 
         # ② 打开退出菜单
         self.send_key('esc')
-        self.sleep(1)
+        self.sleep('auto')
 
         # ③ 确认离开
         self.wait_click_feature('gray_confirm_exit_button',
@@ -65,7 +65,7 @@ class DomainTask(WWOneTimeTask, BaseCombatTask):
 
     def open_F2_book_and_get_stamina(self):
         gray_book_boss = self.openF2Book('gray_book_boss')
-        self.click_box(gray_book_boss, after_sleep=1)
+        self.click_box(gray_book_boss, after_sleep='auto')
         return self.get_stamina()
 
     def farm_domain_with_recovery_loop(self, must_use, teleport_into_domain_once, max_recovery_retries=3):
@@ -114,11 +114,11 @@ class DomainTask(WWOneTimeTask, BaseCombatTask):
             can_continue, used = self.use_stamina(once=self.stamina_once, must_use=must_use)
             self.info_incr('used stamina', used)
             must_use -= used
-            self.sleep(4)
+            self.sleep('auto')
             if not can_continue:
                 self.log_info("used all stamina")
                 break
-            self.click(0.68, 0.84, after_sleep=1)  # farm again
+            self.click(0.68, 0.84, after_sleep='auto')  # farm again
             if confirm := self.wait_feature(
                     ['confirm_btn_hcenter_vcenter', 'confirm_btn_highlight_hcenter_vcenter'],
                     raise_if_not_found=False,
@@ -134,6 +134,6 @@ class DomainTask(WWOneTimeTask, BaseCombatTask):
             self.wait_in_team_and_world(time_out=self.teleport_timeout)
             self.sleep(1)
         #
-        self.click(0.42, 0.84, after_sleep=2)  # back to world
+        self.click(0.42, 0.84, after_sleep='auto')  # back to world
         self.make_sure_in_world()
         return True, must_use

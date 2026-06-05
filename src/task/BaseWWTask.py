@@ -663,6 +663,8 @@ class BaseWWTask(BaseTask):
         return False
 
     def sleep(self, timeout):
+        if isinstance(timeout, str):
+            return super().sleep(timeout)
         return super().sleep(timeout - self.check_for_monthly_card())
 
     def wait_in_team_and_world(self, time_out=10, raise_if_not_found=True, esc=False):
@@ -932,10 +934,10 @@ class BaseWWTask(BaseTask):
         self.send_key_up('alt')
         self.sleep(0.5)
 
-    def open_boss_book(self, name, after_sleep=1):
+    def open_boss_book(self, name, after_sleep='auto'):
         self.log_info(f'open_boss_book {name}')
         x = 0.24
-        self.sleep(0.4)
+        self.sleep('auto')
         if name == 'wuyin':
             y = 0.49
         elif name == 'canxiang':
@@ -966,14 +968,15 @@ class BaseWWTask(BaseTask):
                 self.sleep(0.05)
                 self.click_relative(0.77, 0.05)
                 self.sleep(0.02)
-                self.send_key_up('alt')
-                self.sleep(3)
+                self.send_key_up('alt', after_sleep='auto')
             if self.in_team_and_world():
-                self.send_key('f2', after_sleep=3)
+                self.send_key('f2', after_sleep='auto')
                 self.log_info('send f2 key to open the book failed, use f2')
 
-        gray_book_boss = self.wait_book(feature)
-        self.sleep(0.8)
+        gray_book_boss = self.wait_book(feature, settle_time=0)
+        if not opened:
+            self.sleep('auto')
+
         if not gray_book_boss:
             self.log_error("can't find gray_book_boss, make sure f2 is the hotkey for book", notify=True)
             raise Exception("can't find gray_book_boss, make sure f2 is the hotkey for book")
@@ -986,15 +989,15 @@ class BaseWWTask(BaseTask):
                 feature = self.find_one(feature_name, threshold=0.7)
                 if not feature:
                     continue
-                self.click(feature, after_sleep=1)
+                self.click(feature, after_sleep='auto')
                 if feature.name == 'fast_travel_custom':
                     if confirm := self.wait_feature(
                             ['confirm_btn_hcenter_vcenter', 'confirm_btn_highlight_hcenter_vcenter'],
                             raise_if_not_found=False,
                             threshold=0.6,
                             time_out=2):
-                        self.click(0.49, 0.55, after_sleep=0.5)  # 点击不再提醒
-                        self.click(confirm, after_sleep=0.5)
+                        self.click(0.49, 0.55, after_sleep='auto')  # 点击不再提醒
+                        self.click(confirm, after_sleep='auto')
                         self.click_confirm()
                 return True
 
@@ -1008,11 +1011,11 @@ class BaseWWTask(BaseTask):
     def wait_click_travel(self):
         self.wait_until(self.click_traval_button, raise_if_not_found=True, time_out=10)
 
-    def wait_book(self, feature="gray_book_all_monsters", time_out=3):
+    def wait_book(self, feature="gray_book_all_monsters", time_out=3, settle_time=1):
         gray_book_boss = self.wait_until(
             lambda: self.find_one(feature, box='box_gray_book',
                                   threshold=0.3),
-            time_out=time_out, settle_time=1)
+            time_out=time_out, settle_time=settle_time)
         logger.info(f'found gray_book_boss {gray_book_boss}')
         # if self.debug:
         #     self.screenshot(feature)
@@ -1054,7 +1057,7 @@ class BaseWWTask(BaseTask):
         else:
             item_h = (bar_bottom - bar_top) / total_number
             height = item_h * serial_number
-            self.click(bar_x, bar_top + height, after_sleep=1)
+            self.click(bar_x, bar_top + height, after_sleep='auto')
         btns = self.find_feature('boss_proceed', box=self.box_of_screen(0.9113, 0.229, 0.9613, 0.861), threshold=0.8)
         if btns is None:
             raise Exception("can't find boss_proceed")
@@ -1063,7 +1066,7 @@ class BaseWWTask(BaseTask):
         else:
             target = max(btns, key=lambda box: box.y)
         self.draw_boxes(boxes=target, color="red")
-        self.click(target, after_sleep=1)
+        self.click(target, after_sleep='auto')
         self.wait_feature(['fast_travel_custom', 'gray_teleport', 'remove_custom'], time_out=10, settle_time=0.5)
 
     def change_time_to_night(self):
@@ -1098,15 +1101,15 @@ class BaseWWTask(BaseTask):
         if not gray_book_weekly:
             self.log_error('go_to_tower can not find gray_book_weekly')
             return
-        self.click_box(gray_book_weekly, after_sleep=3)
-        btn = self.find_one(Labels.boss_proceed, box=self.box_of_screen(0.91, 0.3, 0.95, 0.41), threshold=0.8)
+        self.click_box(gray_book_weekly, after_sleep='auto')
+        btn = self.wait_until(lambda: self.find_one(Labels.boss_proceed, box=self.box_of_screen(0.91, 0.3, 0.95, 0.41), threshold=0.8), time_out=3)
         if btn is None:
             self.ensure_main(time_out=20)
             return
-        self.click_box(btn, after_sleep=1)
+        self.click_box(btn, after_sleep='auto')
         self.wait_click_travel()
         self.wait_in_team_and_world(time_out=120)
-        self.sleep(1)
+        self.sleep('auto')
 
 
 book_bar_color = {

@@ -59,20 +59,20 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
         while True:
             self.sleep(1)
             gray_book_boss = self.openF2Book("gray_book_boss")
-            self.click_box(gray_book_boss, after_sleep=1)
+            self.click_box(gray_book_boss, after_sleep='auto')
             current, back_up, total = self.get_stamina()
             if current == -1:
-                self.click_relative(0.04, 0.4, after_sleep=1)
+                self.click_relative(0.04, 0.4, after_sleep='auto')
                 current, back_up, total = self.get_stamina()
             if total < self.stamina_once:
                 return self.not_enough_stamina()
 
-            self.open_boss_book('wuyin')
+            self.open_boss_book('wuyin', after_sleep='auto')
             index = config.get('Which Tacet Suppression to Farm', 1) - 1
             self.teleport_to_tacet(index)
             self.wait_click_travel()
             self.wait_in_team_and_world(time_out=120)
-            self.sleep(2)
+            self.sleep('auto')
             if self.door_walk_method.get(index) is not None:
                 for method in self.door_walk_method.get(index):
                     self.send_key_down(method[0])
@@ -103,8 +103,8 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
                     raise e
             can_continue, used = self.use_stamina(once=self.stamina_once, must_use=must_use)
             self.info_incr('used stamina', used)
-            self.sleep(4)
-            self.click(0.51, 0.84, after_sleep=3)
+            self.sleep('auto')
+            self.click(0.51, 0.84, after_sleep='auto')
             if not can_continue:
                 return self.not_enough_stamina()
             must_use -= used
@@ -112,7 +112,7 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
     def not_enough_stamina(self, back=True):
         self.log_info(f"used all stamina")
         if back:
-            self.back(after_sleep=1)
+            self.back(after_sleep='auto')
 
     def teleport_to_tacet(self, index):
         self.info_set('Teleport to Tacet Suppression', index)

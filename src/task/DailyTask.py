@@ -111,12 +111,12 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             else:
                 self.get_task_by_class(SimulationTask).farm_simulation(daily=True, used_stamina=used_stamina,
                                                                        config=self.config)
-            self.sleep(4)
+            self.sleep('auto')
 
         self.claim_daily()
 
         self.claim_mail()
-        self.sleep(1)
+        self.sleep(0.5)
         self.claim_battle_pass()
         self.log_info('Task completed', notify=True)
 
@@ -129,22 +129,22 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
         if not self.wait_ocr(0.2, 0.13, 0.32, 0.22, match=re.compile(r'\d+'), settle_time=1, raise_if_not_found=False):
             self.log_error('can not battle pass, maybe ended')
         else:
-            self.click(0.04, 0.3, after_sleep=1)
-            self.click(0.68, 0.91, after_sleep=3)
-            self.click(0.04, 0.17, after_sleep=2)
-            self.click(0.68, 0.91, after_sleep=2)
+            self.click(0.04, 0.3, after_sleep='auto')
+            self.click(0.68, 0.91, after_sleep='auto')
+            self.click(0.04, 0.17, after_sleep='auto')
+            self.click(0.68, 0.91, after_sleep='auto')
             self.wait_ocr(0.2, 0.13, 0.32, 0.22, match=re.compile(r'\d+'),
-                          post_action=lambda: self.click(0.68, 0.91, after_sleep=1), settle_time=1,
+                          post_action=lambda: self.click(0.68, 0.91, after_sleep='auto'), settle_time=1,
                           raise_if_not_found=False)
         self.ensure_main()
 
     def open_daily(self):
         self.log_info('open_daily')
         gray_book_quest = self.openF2Book("gray_book_quest")
-        self.click_box(gray_book_quest, after_sleep=1.5)
+        self.click_box(gray_book_quest, after_sleep='auto')
         progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'^(\d+)/180$'))
         if not progress:
-            self.click(0.974, 0.6, after_sleep=1)
+            self.click(0.974, 0.6, after_sleep='auto')
             progress = self.ocr(0.1, 0.1, 0.5, 0.75, match=re.compile(r'^(\d+)/180$'))
         if progress:
             current = int(progress[0].name.split('/')[0])
@@ -173,8 +173,8 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
             self.open_daily()
             self.sleep(1)
             self.log_info('claim pending daily quest rewards before claiming daily chest')
-            self.click(0.87, 0.18, after_sleep=0.5)
-            self.sleep(1)
+            self.click(0.87, 0.18, after_sleep='auto')
+            self.sleep(0.3)
             total_points = self.get_total_daily_points()
 
         self.info_set('daily points', total_points)
@@ -186,14 +186,14 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
 
     def click_daily_reward_box(self, reward_points):
         self.log_info(f'claim daily reward {reward_points} via fallback coordinate')
-        self.click(0.93, 0.88, after_sleep=1)
+        self.click(0.93, 0.88, after_sleep='auto')
         return False
 
     def claim_mail(self):
         self.info_set('current task', 'claim mail')
-        self.back(after_sleep=1.5)
-        self.click(0.64, 0.95, after_sleep=1)
-        self.click(0.14, 0.9, after_sleep=1)
+        self.back(after_sleep='auto')
+        self.click(0.64, 0.95, after_sleep='auto')
+        self.click(0.14, 0.9, after_sleep='auto')
         self.ensure_main(time_out=10)
 
 

@@ -60,7 +60,7 @@ class ForgeryTask(DomainTask):
         self.ensure_main()
 
     def teleport_into_domain(self, serial_number, daily=False):
-        self.click_relative(0.18, 0.16, after_sleep=1)
+        self.click_relative(0.18, 0.16, after_sleep='auto')
         self.info_set('Teleport to Forgery Challenge', serial_number - 1)
         if serial_number > self.total_number:
             raise IndexError(f'Index out of range, max is {self.total_number}')
@@ -75,7 +75,7 @@ class ForgeryTask(DomainTask):
             self.pick_f()
             if self.wait_click_feature('gray_button_challenge', relative_x=4, raise_if_not_found=False,
                                        click_after_delay=1, threshold=0.6, after_sleep=1, time_out=3):
-                self.click_relative(0.93, 0.90, after_sleep=1)
+                self.click_relative(0.93, 0.90, after_sleep='auto')
                 self.wait_in_team_and_world(time_out=self.teleport_timeout)
                 return
         raise RuntimeError('Failed to enter Forgery Challenge')

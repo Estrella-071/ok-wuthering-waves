@@ -68,12 +68,12 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
         return self._capture_success
 
     def combat_nest(self, nest):
-        self.click(nest, after_sleep=2)
+        self.click(nest, after_sleep='auto')
         self.wait_click_travel()
         self.wait_in_team_and_world(time_out=30, raise_if_not_found=False)
         self.sleep(1)
         while self.find_f_with_text():
-            self.send_key('f', after_sleep=1)
+            self.send_key('f', after_sleep='auto')
             self.wait_in_team_and_world(time_out=40, raise_if_not_found=False)
         self.sleep(2)
         self.run_until(self.in_combat, 'w', time_out=10, running=False, target=True)
@@ -99,7 +99,7 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
 
     def get_nest_to_go(self):
         gray_book_boss = self.openF2Book("gray_book_boss")
-        self.click_box(gray_book_boss, after_sleep=1)
+        self.click_box(gray_book_boss, after_sleep='auto')
 
         while self.queues:
             self.queues[0]()
@@ -123,7 +123,7 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
 
     def go_nightmare_scroll(self):
         self.open_boss_book('mengyan')
-        self.click(3737 / 3840, 0.54, after_sleep=1)
+        self.click(3737 / 3840, 0.54, after_sleep='auto')
         self.log_info('go nightmare scroll')
 
     def go_nest(self):
