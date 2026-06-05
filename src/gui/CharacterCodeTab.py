@@ -5,7 +5,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QUrl, QObject, QEvent
 from PySide6.QtGui import QColor, QDesktopServices, QPixmap, QTextCursor, QTextFormat, QPainter, QPainterPath
 from PySide6.QtWidgets import QApplication, QButtonGroup, QHBoxLayout, QLabel, QListWidgetItem, QSplitter, QTextEdit, QVBoxLayout, QWidget, QGraphicsDropShadowEffect, QFrame
-from qfluentwidgets import BodyLabel, FluentIcon, ListWidget, MessageBox, PlainTextEdit, PrimaryPushButton, PushButton, RadioButton
+from qfluentwidgets import BodyLabel, FluentIcon, ListWidget, MessageBox, PlainTextEdit, PrimaryPushButton, PushButton, RadioButton, ToolButton
 
 from ok.gui.tasks.EditTaskTab import CodeEditor
 from ok.gui.tasks.PythonHighlighter import PythonHighlighter
@@ -201,11 +201,11 @@ class CharacterCodeTab(CustomTab):
         self.contribute_button = PushButton(FluentIcon.DOCUMENT, self.tr("Contribute Code"))
         self.contribute_button.clicked.connect(self._open_contribute_code)
         
-        self.how_to_button = PushButton(FluentIcon.HELP)
+        self.how_to_button = ToolButton(FluentIcon.HELP, self)
         self.how_to_button.clicked.connect(self._show_how_to)
         self.how_to_button.setFixedSize(32, 32)
         
-        self.base_char_button = PushButton(FluentIcon.CODE)
+        self.base_char_button = ToolButton(FluentIcon.CODE, self)
         self.base_char_button.clicked.connect(self._open_base_char)
         self.base_char_button.setFixedSize(32, 32)
 
