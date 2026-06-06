@@ -158,7 +158,7 @@ class CharacterCodeTab(CustomTab):
         self.segmented_widget = SegmentedWidget(self)
         self.segmented_widget.addItem("builtin", self.tr("Use built in"))
         self.segmented_widget.addItem("custom", self.tr("Use custom"))
-        self.segmented_widget.currentKeyChanged.connect(self._on_segment_changed)
+        self.segmented_widget.currentItemChanged.connect(self._on_segment_changed)
         
         mode_layout.addWidget(self.char_image_label)
         mode_layout.addLayout(char_info_layout)
@@ -321,7 +321,7 @@ class CharacterCodeTab(CustomTab):
         self.current_char_cls = char_cls
         self.current_row = row
         enabled = is_custom_char_enabled(char_cls)
-        self.segmented_widget.setCurrentKey("custom" if enabled else "builtin")
+        self.segmented_widget.setCurrentItem("custom" if enabled else "builtin")
         self._update_char_image()
         
         # Update character info labels & badges
@@ -356,7 +356,7 @@ class CharacterCodeTab(CustomTab):
         self.status_label.setText(str(has_custom_char_code(char_cls) and self.tr("Custom code saved") or ""))
 
     def _sync_editor_state(self):
-        is_builtin = self.segmented_widget.currentKey() == "builtin"
+        is_builtin = self.segmented_widget.currentRouteKey() == "builtin"
         self.editor.setReadOnly(is_builtin)
         self.reset_button.setVisible(not is_builtin)
         self.save_button.setVisible(not is_builtin)
@@ -369,7 +369,7 @@ class CharacterCodeTab(CustomTab):
         if key == "builtin" and self._has_unsaved_changes():
             if not self._confirm_discard_changes():
                 self.suppress_mode_guard = True
-                self.segmented_widget.setCurrentKey("custom")
+                self.segmented_widget.setCurrentItem("custom")
                 self.suppress_mode_guard = False
                 self._sync_editor_state()
                 return
@@ -384,7 +384,7 @@ class CharacterCodeTab(CustomTab):
     def _load_editor_code(self):
         if self.current_char_cls is None:
             return
-        if self.segmented_widget.currentKey() == "custom":
+        if self.segmented_widget.currentRouteKey() == "custom":
             code = read_custom_or_builtin_char_code(self.current_char_cls)
         else:
             code = read_builtin_char_code(self.current_char_cls)
@@ -402,7 +402,7 @@ class CharacterCodeTab(CustomTab):
         self.status_label.setText(self.tr("Unsaved changes") if self._has_unsaved_changes() else "")
 
     def _has_unsaved_changes(self):
-        return self.segmented_widget.currentKey() == "custom" and self.editor.toPlainText() != self.clean_code
+        return self.segmented_widget.currentRouteKey() == "custom" and self.editor.toPlainText() != self.clean_code
 
     def _confirm_discard_changes(self):
         box = MessageBox(
@@ -413,7 +413,7 @@ class CharacterCodeTab(CustomTab):
         return bool(box.exec())
 
     def _highlight_changed_lines(self):
-        if self.current_char_cls is None or self.segmented_widget.currentKey() == "builtin":
+        if self.current_char_cls is None or self.segmented_widget.currentRouteKey() == "builtin":
             self.editor.setExternalExtraSelections([])
             return
 
@@ -443,7 +443,7 @@ class CharacterCodeTab(CustomTab):
         if self.current_char_cls is None:
             return
         try:
-            if self.segmented_widget.currentKey() == "custom":
+            if self.segmented_widget.currentRouteKey() == "custom":
                 code = self.editor.toPlainText()
                 builtin_code = read_builtin_char_code(self.current_char_cls)
                 if code == builtin_code:
@@ -498,7 +498,7 @@ class CharacterCodeTab(CustomTab):
 
     def _switch_to_builtin_mode(self, builtin_code):
         self.suppress_mode_guard = True
-        self.segmented_widget.setCurrentKey("builtin")
+        self.segmented_widget.setCurrentItem("builtin")
         self.suppress_mode_guard = False
         self.loading_editor = True
         self.editor.setPlainText(builtin_code)
