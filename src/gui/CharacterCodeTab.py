@@ -9,6 +9,21 @@ from qfluentwidgets import BodyLabel, SubtitleLabel, FluentIcon, ListWidget, Mes
 
 from ok.gui.tasks.EditTaskTab import CodeEditor
 from ok.gui.tasks.PythonHighlighter import PythonHighlighter
+
+class DummyRadio:
+    def __init__(self, tab, mode):
+        self.tab = tab
+        self.mode = mode
+
+    def isChecked(self):
+        return self.tab.mode_segmented.currentRouteKey() == self.mode
+
+    def setChecked(self, checked):
+        if checked:
+            old_guard = self.tab.suppress_mode_guard
+            self.tab.suppress_mode_guard = True
+            self.tab.mode_segmented.setCurrentItem(self.mode)
+            self.tab.suppress_mode_guard = old_guard
 from ok.gui.util.app import show_info_bar
 from ok.gui.widget.CustomTab import CustomTab
 from src.char.CharFactory import char_dict
@@ -39,35 +54,17 @@ class CharacterItemWidget(QWidget):
     def __init__(self, display_name, file_name, parent=None):
         super().__init__(parent)
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 6, 12, 6)
-        layout.setSpacing(10)
-        
-        self.avatar_label = QLabel(self)
-        self.avatar_label.setFixedSize(32, 32)
-        self.avatar_label.setAlignment(Qt.AlignCenter)
-        
-        text_layout = QVBoxLayout()
-        text_layout.setSpacing(2)
-        text_layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(12, 8, 12, 8)
         
         self.name_label = BodyLabel(display_name, self)
         self.file_label = BodyLabel(file_name, self)
-        self.file_label.setStyleSheet("color: #8c8c8c; font-size: 11px;")
+        self.file_label.setStyleSheet("color: #8c8c8c; font-size: 12px;")
         
-        text_layout.addWidget(self.name_label)
-        text_layout.addWidget(self.file_label)
-        
-        layout.addWidget(self.avatar_label)
-        layout.addLayout(text_layout, 1)
+        layout.addWidget(self.name_label)
+        layout.addStretch()
+        layout.addWidget(self.file_label)
         
         self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-
-    def set_avatar(self, pixmap):
-        if pixmap and not pixmap.isNull():
-            scaled = pixmap.scaled(32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            self.avatar_label.setPixmap(scaled)
-        else:
-            self.avatar_label.clear()
 
 
 class CharacterCodeTab(CustomTab):
@@ -105,82 +102,45 @@ class CharacterCodeTab(CustomTab):
         right_layout = QVBoxLayout(right)
         right_layout.setContentsMargins(8, 0, 0, 0)
         right_layout.setSpacing(10)
-        right_layout.addWidget(SubtitleLabel(self.tr("Character Code")))
 
-        mode_layout = QHBoxLayout()
-        mode_layout.setSpacing(12)
-        
+        # Single compact row layout integrating title, avatar, switcher and buttons
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(12)
+
         self.char_image_label = QLabel()
-        self.char_image_label.setFixedSize(52, 52)
+        self.char_image_label.setFixedSize(32, 32)
         self.char_image_label.setAlignment(Qt.AlignCenter)
+        self.char_image_label.setScaledContents(True)
+        # Apply premium circular avatar border style
+        self.char_image_label.setStyleSheet("border-radius: 16px; border: 1px solid rgba(0, 0, 0, 15);")
         
-        # Character info layout (Name & Badges)
-        char_info_layout = QVBoxLayout()
-        char_info_layout.setSpacing(4)
-        char_info_layout.setContentsMargins(0, 0, 0, 0)
+        title_label = SubtitleLabel(self.tr("Character Code"))
         
-        self.char_name_label = SubtitleLabel("", self)
+        self.mode_segmented = SegmentedWidget(right)
+        self.mode_segmented.addItem("builtin", self.tr("Use built in"), self._mode_changed)
+        self.mode_segmented.addItem("custom", self.tr("Use custom"), self._mode_changed)
         
-        self.badge_layout = QHBoxLayout()
-        self.badge_layout.setSpacing(6)
-        self.badge_layout.setContentsMargins(0, 0, 0, 0)
-        
-        self.attr_badge = QLabel(self)
-        self.attr_badge.setStyleSheet("""
-            QLabel {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #8A2387, stop:1 #E94057);
-                color: white;
-                border-radius: 4px;
-                padding: 2px 6px;
-                font-size: 11px;
-                font-weight: bold;
-            }
-        """)
-        self.position_badge = QLabel(self)
-        self.position_badge.setStyleSheet("""
-            QLabel {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #11998e, stop:1 #38ef7d);
-                color: white;
-                border-radius: 4px;
-                padding: 2px 6px;
-                font-size: 11px;
-                font-weight: bold;
-            }
-        """)
-        self.badge_layout.addWidget(self.attr_badge)
-        self.badge_layout.addWidget(self.position_badge)
-        self.badge_layout.addStretch(1)
-        
-        char_info_layout.addWidget(self.char_name_label)
-        char_info_layout.addLayout(self.badge_layout)
-        
-        # Segmented Control for mode selection
-        self.segmented_widget = SegmentedWidget(self)
-        self.segmented_widget.addItem("builtin", self.tr("Use built in"))
-        self.segmented_widget.addItem("custom", self.tr("Use custom"))
-        self.segmented_widget.currentItemChanged.connect(self._on_segment_changed)
-        
-        mode_layout.addWidget(self.char_image_label)
-        mode_layout.addLayout(char_info_layout)
-        mode_layout.addWidget(self.segmented_widget)
-        mode_layout.addStretch(1)
-        
+        self.builtin_radio = DummyRadio(self, "builtin")
+        self.custom_radio = DummyRadio(self, "custom")
+
         self.ask_ai_button = PushButton(FluentIcon.ROBOT, self.tr("Ask AI"))
         self.ask_ai_button.clicked.connect(self._copy_ask_ai_template)
         self.how_to_button = PushButton(FluentIcon.HELP, self.tr("How To"))
         self.how_to_button.clicked.connect(self._show_how_to)
         self.contribute_button = PushButton(FluentIcon.GITHUB, self.tr("Contribute Code"))
         self.contribute_button.clicked.connect(self._open_contribute_code)
-        mode_layout.addWidget(self.ask_ai_button)
-        mode_layout.addWidget(self.how_to_button)
-        mode_layout.addWidget(self.contribute_button)
-        right_layout.addLayout(mode_layout)
 
-        # Splitter to hold Editor (left) and Combat API Side Panel (right)
-        self.editor_splitter = QSplitter(Qt.Horizontal, right)
-        self.editor_splitter.setChildrenCollapsible(True)
+        header_layout.addWidget(self.char_image_label)
+        header_layout.addWidget(title_label)
+        header_layout.addWidget(self.mode_segmented)
+        header_layout.addStretch(1)
+        header_layout.addWidget(self.ask_ai_button)
+        header_layout.addWidget(self.how_to_button)
+        header_layout.addWidget(self.contribute_button)
+        
+        right_layout.addLayout(header_layout)
 
-        self.editor = CodeEditor(self.editor_splitter)
+        self.editor = CodeEditor(right)
         self.editor.setMinimumHeight(520)
         self.editor.setLineWrapMode(PlainTextEdit.NoWrap)
         font = self.editor.font()
@@ -189,50 +149,7 @@ class CharacterCodeTab(CustomTab):
         self.editor.setFont(font)
         self.highlighter = PythonHighlighter(self.editor.document())
         self.editor.textChanged.connect(self._editor_text_changed)
-        self.editor_splitter.addWidget(self.editor)
-
-        # Combat API Reference Side Panel
-        self.api_panel = QWidget(self.editor_splitter)
-        api_layout = QVBoxLayout(self.api_panel)
-        api_layout.setContentsMargins(6, 0, 0, 0)
-        api_layout.setSpacing(6)
-        
-        api_title = BodyLabel(self.tr("Combat API Reference"), self.api_panel)
-        api_title.setStyleSheet("font-weight: bold; color: #009FAA;")
-        api_layout.addWidget(api_title)
-        
-        self.api_list = ListWidget(self.api_panel)
-        self.api_list.setMinimumWidth(180)
-        self.api_list.setMaximumWidth(280)
-        self.api_list.itemDoubleClicked.connect(self._insert_api_code)
-        
-        # Populate combat APIs reference
-        apis = [
-            ("click_resonance()", "self.click_resonance()", self.tr("Resonance Skill (E)")),
-            ("click_liberation()", "self.click_liberation()", self.tr("Resonance Liberation (R)")),
-            ("click_echo()", "self.click_echo()", self.tr("Echo (T)")),
-            ("click_attack()", "self.click_attack()", self.tr("Normal Attack (LButton)")),
-            ("click_heavy()", "self.click_heavy()", self.tr("Heavy Attack (Hold)")),
-            ("dash()", "self.dash()", self.tr("Dash / Evade (Shift)")),
-            ("jump()", "self.jump()", self.tr("Jump (Space)")),
-            ("has_intro", "self.has_intro", self.tr("Intro Skill Ready")),
-            ("is_current_char", "self.is_current_char", self.tr("Is Active Character")),
-            ("resonance_cooldown_left()", "self.resonance_cooldown_left()", self.tr("Resonance Skill CD")),
-            ("liberation_cooldown_left()", "self.liberation_cooldown_left()", self.tr("Resonance Liberation CD")),
-            ("echo_cooldown_left()", "self.echo_cooldown_left()", self.tr("Echo Skill CD")),
-        ]
-        for name, code, desc in apis:
-            item = QListWidgetItem()
-            item.setText(f"{name}\n({desc})")
-            item.setData(Qt.UserRole, code)
-            item.setToolTip(self.tr("Double click to insert: ") + code)
-            self.api_list.addItem(item)
-            
-        api_layout.addWidget(self.api_list)
-        self.editor_splitter.addWidget(self.api_panel)
-        self.editor_splitter.setStretchFactor(0, 4)
-        self.editor_splitter.setStretchFactor(1, 1)
-        right_layout.addWidget(self.editor_splitter, 1)
+        right_layout.addWidget(self.editor, 1)
 
         bottom_layout = QHBoxLayout()
         self.status_label = BodyLabel("")
@@ -292,9 +209,6 @@ class CharacterCodeTab(CustomTab):
             item.setData(Qt.UserRole, char_cls.__name__)
             self.char_list.addItem(item)
             widget = CharacterItemWidget(label, f"{char_cls.__name__}.py", self.char_list)
-            label_name = self.char_label_by_cls.get(char_cls)
-            pixmap = self._get_char_feature_image(label_name)
-            widget.set_avatar(pixmap)
             self.char_list.setItemWidget(item, widget)
             if char_cls.__name__ == selected_name:
                 selected_row = row
@@ -321,70 +235,35 @@ class CharacterCodeTab(CustomTab):
         self.current_char_cls = char_cls
         self.current_row = row
         enabled = is_custom_char_enabled(char_cls)
-        self.segmented_widget.setCurrentItem("custom" if enabled else "builtin")
+        self.custom_radio.setChecked(enabled)
+        self.builtin_radio.setChecked(not enabled)
         self._update_char_image()
-        
-        # Update character info labels & badges
-        self.char_name_label.setText(self._display_char_name(char_cls))
-        character_meta = {
-            "Aemeath": (self.tr("Havoc"), self.tr("Main DPS")),
-            "Augusta": (self.tr("Spectro"), self.tr("Support")),
-            "Baizhi": (self.tr("Glacio"), self.tr("Healer")),
-            "Brant": (self.tr("Electro"), self.tr("Sub DPS")),
-            "Calcharo": (self.tr("Electro"), self.tr("Main DPS")),
-            "Camellya": (self.tr("Havoc"), self.tr("Main DPS")),
-            "Changli": (self.tr("Fusion"), self.tr("Main DPS")),
-            "Chisa": (self.tr("Aero"), self.tr("Main DPS")),
-            "Danjin": (self.tr("Havoc"), self.tr("Main DPS")),
-            "Jianxin": (self.tr("Aero"), self.tr("Support")),
-            "Jinhsi": (self.tr("Spectro"), self.tr("Main DPS")),
-            "Jiyan": (self.tr("Aero"), self.tr("Main DPS")),
-            "Rover": (self.tr("Spectro"), self.tr("Main DPS")),
-            "HavocRover": (self.tr("Havoc"), self.tr("Main DPS")),
-            "Sanhua": (self.tr("Glacio"), self.tr("Sub DPS")),
-            "ShoreKeeper": (self.tr("Spectro"), self.tr("Support")),
-            "Verina": (self.tr("Spectro"), self.tr("Healer")),
-            "Yangyang": (self.tr("Aero"), self.tr("Sub DPS")),
-            "Yinlin": (self.tr("Electro"), self.tr("Sub DPS")),
-            "Zhezhi": (self.tr("Glacio"), self.tr("Sub DPS")),
-        }
-        meta = character_meta.get(char_cls.__name__, (self.tr("Unknown"), self.tr("Combatant")))
-        self.attr_badge.setText(meta[0])
-        self.position_badge.setText(meta[1])
-        
         self._load_editor_code()
         self.status_label.setText(str(has_custom_char_code(char_cls) and self.tr("Custom code saved") or ""))
 
     def _sync_editor_state(self):
-        is_builtin = self.segmented_widget.currentRouteKey() == "builtin"
-        self.editor.setReadOnly(is_builtin)
-        self.reset_button.setVisible(not is_builtin)
-        self.save_button.setVisible(not is_builtin)
+        self.editor.setReadOnly(self.builtin_radio.isChecked())
+        self.reset_button.setVisible(self.custom_radio.isChecked())
+        self.save_button.setVisible(self.custom_radio.isChecked())
 
-    def _on_segment_changed(self, key):
+    def _mode_changed(self):
         if self.suppress_mode_guard:
             return
         if self.current_char_cls is None:
             return
-        if key == "builtin" and self._has_unsaved_changes():
+        if self.builtin_radio.isChecked() and self._has_unsaved_changes():
             if not self._confirm_discard_changes():
                 self.suppress_mode_guard = True
-                self.segmented_widget.setCurrentItem("custom")
+                self.custom_radio.setChecked(True)
                 self.suppress_mode_guard = False
                 self._sync_editor_state()
                 return
         self._load_editor_code()
 
-    def _insert_api_code(self, item):
-        code = item.data(Qt.UserRole)
-        if code:
-            self.editor.insertPlainText(code)
-            self.editor.setFocus()
-
     def _load_editor_code(self):
         if self.current_char_cls is None:
             return
-        if self.segmented_widget.currentRouteKey() == "custom":
+        if self.custom_radio.isChecked():
             code = read_custom_or_builtin_char_code(self.current_char_cls)
         else:
             code = read_builtin_char_code(self.current_char_cls)
@@ -402,7 +281,7 @@ class CharacterCodeTab(CustomTab):
         self.status_label.setText(self.tr("Unsaved changes") if self._has_unsaved_changes() else "")
 
     def _has_unsaved_changes(self):
-        return self.segmented_widget.currentRouteKey() == "custom" and self.editor.toPlainText() != self.clean_code
+        return self.custom_radio.isChecked() and self.editor.toPlainText() != self.clean_code
 
     def _confirm_discard_changes(self):
         box = MessageBox(
@@ -413,7 +292,7 @@ class CharacterCodeTab(CustomTab):
         return bool(box.exec())
 
     def _highlight_changed_lines(self):
-        if self.current_char_cls is None or self.segmented_widget.currentRouteKey() == "builtin":
+        if self.current_char_cls is None or self.builtin_radio.isChecked():
             self.editor.setExternalExtraSelections([])
             return
 
@@ -443,7 +322,7 @@ class CharacterCodeTab(CustomTab):
         if self.current_char_cls is None:
             return
         try:
-            if self.segmented_widget.currentRouteKey() == "custom":
+            if self.custom_radio.isChecked():
                 code = self.editor.toPlainText()
                 builtin_code = read_builtin_char_code(self.current_char_cls)
                 if code == builtin_code:
@@ -498,7 +377,7 @@ class CharacterCodeTab(CustomTab):
 
     def _switch_to_builtin_mode(self, builtin_code):
         self.suppress_mode_guard = True
-        self.segmented_widget.setCurrentItem("builtin")
+        self.builtin_radio.setChecked(True)
         self.suppress_mode_guard = False
         self.loading_editor = True
         self.editor.setPlainText(builtin_code)
